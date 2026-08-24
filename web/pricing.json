@@ -1,0 +1,41 @@
+{
+  "currency": "USD",
+  "tiers": {
+    "trial": {
+      "name": "Community Trial",
+      "price": 0,
+      "duration_days": 14,
+      "max_vms": 1,
+      "features": ["720p_capture", "basic_mcp", "single_vm"]
+    },
+    "indie": {
+      "name": "Indie Pro",
+      "price": 49,
+      "billing": "one_time",
+      "duration_days": 365,
+      "max_vms": 1,
+      "features": ["1080p_60fps", "gpu_partitioning", "sub2s_rollback", "all_14_mcp_tools", "nvenc_recording"]
+    },
+    "studio_pro": {
+      "name": "Studio Pro",
+      "price": 199,
+      "billing": "per_seat",
+      "duration_days": 365,
+      "max_vms": 4,
+      "features": ["4k_capture", "multi_vm_concurrency", "agent_studio_pro_hud", "priority_support", "commercial_license"]
+    },
+    "enterprise": {
+      "name": "Enterprise Floating",
+      "price": 2499,
+      "billing": "annual",
+      "duration_days": 365,
+      "max_vms": 16,
+      "features": ["floating_license_server", "custom_base_images", "houdini_blender_unreal_support", "dedicated_sla"]
+    }
+  },
+  "webhooks": {
+    "provider": "LemonSqueezy / Stripe",
+    "endpoint": "/api/v1/webhooks/fulfillment",
+    "signature_header": "X-Signature-256"
+  }
+}

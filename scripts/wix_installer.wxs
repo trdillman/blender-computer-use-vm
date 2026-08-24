@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="GhostCanvas 3D - Blender Computer-Use VM"
+           Language="1033"
+           Version="1.1.0.0"
+           Manufacturer="GhostCanvas"
+           UpgradeCode="4C236B2B-6C3D-4A2B-8E27-6E274A2B9199">
+
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Description="Isolated GPU-accelerated local VM &amp; MCP Server for automated Blender 5.2 AI testing." />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of GhostCanvas 3D is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Directory Structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="GhostCanvas3D">
+          <Directory Id="HostDir" Name="host" />
+          <Directory Id="GuestDir" Name="guest" />
+          <Directory Id="BlenderDir" Name="blender" />
+          <Directory Id="ScriptsDir" Name="scripts" />
+          <Directory Id="SkillsDir" Name="skills" />
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="GhostCanvas 3D" />
+      </Directory>
+    </Directory>
+
+    <!-- Components -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9101" Win64="yes">
+        <File Id="InstallPy" Source="$(var.SourceDir)\install.py" KeyPath="yes" />
+        <File Id="InstallBat" Source="$(var.SourceDir)\install.bat" />
+        <File Id="PackageJson" Source="$(var.SourceDir)\package.json" />
+        <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" />
+      </Component>
+      <Component Id="HostComponents" Directory="HostDir" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9102" Win64="yes">
+        <File Id="McpServerPy" Source="$(var.SourceDir)\host\mcp_server.py" KeyPath="yes" />
+        <File Id="HvTransportPy" Source="$(var.SourceDir)\host\hv_transport.py" />
+        <File Id="LicensingPy" Source="$(var.SourceDir)\host\licensing.py" />
+        <File Id="VmControllerPy" Source="$(var.SourceDir)\host\vm_controller.py" />
+        <File Id="AssetSyncPy" Source="$(var.SourceDir)\host\asset_sync.py" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Features -->
+    <Feature Id="ProductFeature" Title="GhostCanvas 3D Core" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+  </Product>
+</Wix>

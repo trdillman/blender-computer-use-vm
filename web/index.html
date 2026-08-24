@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostCanvas 3D - Autonomous Blender Computer-Use VM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f0fdf4', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
+            dark: { 900: '#090d16', 800: '#0f172a', 700: '#1e293b' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    .glow-bg {
+      background: radial-gradient(circle at 50% 30%, rgba(34, 197, 94, 0.15), transparent 70%);
+    }
+  </style>
+</head>
+<body class="bg-dark-900 text-slate-100 font-sans antialiased selection:bg-brand-500 selection:text-black">
+
+  <!-- Navigation -->
+  <nav class="border-b border-slate-800 bg-dark-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-emerald-700 flex items-center justify-center text-black font-black text-xl shadow-lg shadow-brand-500/20">
+          G
+        </div>
+        <span class="font-bold text-xl tracking-tight">GhostCanvas <span class="text-brand-500">3D</span></span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-brand-400 border border-slate-700">v1.1.0 LTS</span>
+      </div>
+      <div class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+        <a href="#features" class="hover:text-white transition">Features</a>
+        <a href="#demo" class="hover:text-white transition">Split-Screen Demo</a>
+        <a href="#pricing" class="hover:text-white transition">Pricing</a>
+        <a href="#docs" class="hover:text-white transition">Docs & MCP</a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <a href="#pricing" class="bg-brand-500 hover:bg-brand-600 text-black font-semibold text-sm px-4 py-2 rounded-lg transition shadow-md shadow-brand-500/20">
+          Get Started
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative pt-24 pb-20 overflow-hidden glow-bg">
+    <div class="max-w-5xl mx-auto px-6 text-center">
+      <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-xs text-brand-400 mb-8">
+        <i class="fa-solid fa-bolt"></i>
+        <span>Blender 5.2 LTS + NVIDIA RTX GPU-PV Acceleration</span>
+      </div>
+
+      <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight leading-tight text-white mb-6">
+        Autonomous Blender AI Testing <br>
+        <span class="bg-gradient-to-r from-brand-400 via-emerald-300 to-teal-400 bg-clip-text text-transparent">
+          That Never Steals Your Focus
+        </span>
+      </h1>
+
+      <p class="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+        Give AI coding agents (Claude Code, Oh My Pi, Cursor, Codex) their own dedicated, GPU-accelerated local desktop. Full viewport navigation, Geometry Nodes editing, and 3D UI automation while your real mouse and keyboard stay completely undisturbed.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="#pricing" class="w-full sm:w-auto px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-black font-bold rounded-xl transition shadow-lg shadow-brand-500/25 flex items-center justify-center space-x-2">
+          <i class="fa-brands fa-windows text-lg"></i>
+          <span>Download for Windows 11</span>
+        </a>
+        <a href="#demo" class="w-full sm:w-auto px-8 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-play text-xs text-brand-400"></i>
+          <span>Watch Split-Screen Demo</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Split Screen Interactive Demo Section -->
+  <section id="demo" class="py-20 border-t border-slate-800 bg-dark-800/40">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-3xl mx-auto mb-12">
+        <h2 class="text-3xl font-bold text-white mb-4">True Background Isolation</h2>
+        <p class="text-slate-400">Your real workspace stays 100% interactive while the agent works in parallel on the same GPU.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-2xl">
+        <!-- Host Workspace Card -->
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800 text-xs">
+              <span class="font-bold text-emerald-400 flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>YOUR HOST WORKSPACE (ACTIVE)</span>
+              </span>
+              <span class="text-slate-500">100% Interactive</span>
+            </div>
+            <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 space-y-2 border border-slate-800/60">
+              <div class="text-slate-500">// You are typing in VS Code / Gaming smoothly</div>
+              <div><span class="text-purple-400">function</span> <span class="text-blue-400">renderAwesomeGame</span>() {</div>
+              <div class="pl-4 text-slate-400">const fps = <span class="text-amber-300">144</span>;</div>
+              <div class="pl-4 text-emerald-300">console.log("No cursor jitter, zero lag!");</div>
+              <div>}</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+            <span>Host Mouse Cursor: <strong class="text-white">Undisturbed</strong></span>
+            <span class="text-emerald-400 font-bold">Delta: 0px</span>
+          </div>
+        </div>
+
+        <!-- VM Agent Sandbox Card -->
+        <div class="rounded-xl border border-brand-500/40 bg-slate-950 p-5 flex flex-col justify-between shadow-lg shadow-brand-500/5">
+          <div>
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800 text-xs">
+              <span class="font-bold text-brand-400 flex items-center space-x-2">
+                <i class="fa-solid fa-robot"></i>
+                <span>GHOSTCANVAS VM (BLENDER 5.2 LTS)</span>
+              </span>
+              <span class="text-xs px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 font-semibold">14 MCP Tools Active</span>
+            </div>
+            <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 space-y-1.5 border border-slate-800/60">
+              <div class="text-brand-400">[Agent] vm_mouse_drag(button='middle') -> Viewport Orbit</div>
+              <div class="text-slate-400">[Agent] vm_keyboard_press(['shift', 'a']) -> Add Geometry Node</div>
+              <div class="text-slate-400">[Agent] vm_blender_eval('bpy.context.active_object.name')</div>
+              <div class="text-emerald-400">-> Verified Result: {"active_object": "FluidEmitter_01"}</div>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+            <span>GPU Compute: <strong class="text-white">RTX 4080 Super (vGPU)</strong></span>
+            <span class="text-brand-400 font-bold">Sub-2s Reset</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Matrix -->
+  <section id="pricing" class="py-24 max-w-7xl mx-auto px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-4">Transparent, Fair Pricing</h2>
+      <p class="text-slate-400">Choose between one-time indie licenses or studio team seats. Every tier includes full GPU partitioning.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Trial -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-8 flex flex-col justify-between">
+        <div>
+          <h3 class="text-xl font-bold text-white mb-2">Free Trial</h3>
+          <p class="text-sm text-slate-400 mb-6">Explore Computer-Use workflows for 14 days.</p>
+          <div class="text-4xl font-extrabold text-white mb-6">$0 <span class="text-base text-slate-500 font-normal">/ 14 days</span></div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>1 Local Hyper-V VM</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>1080p Screen Capture</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Standard MCP Server</span></li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-sm transition">Start Free Trial</button>
+      </div>
+
+      <!-- Indie Pro -->
+      <div class="rounded-2xl border-2 border-brand-500 bg-slate-950 p-8 flex flex-col justify-between relative shadow-xl shadow-brand-500/10">
+        <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-brand-500 text-black text-xs font-black uppercase px-3 py-1 rounded-full tracking-wide">Most Popular</div>
+        <div>
+          <h3 class="text-xl font-bold text-white mb-2">Indie Pro</h3>
+          <p class="text-sm text-slate-400 mb-6">For individual 3D developers and addon creators.</p>
+          <div class="text-4xl font-extrabold text-white mb-6">$49 <span class="text-base text-slate-500 font-normal">/ perpetual</span></div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Full NVIDIA GPU-PV (RTX Acceleration)</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Sub-2s Instant Snapshot Rollback</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>14 MCP Tools + NVENC Recording</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>1 Year of Core Updates</span></li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 bg-brand-500 hover:bg-brand-600 font-bold text-black rounded-xl text-sm transition shadow-lg shadow-brand-500/25">Buy Indie License</button>
+      </div>
+
+      <!-- Studio Team -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-8 flex flex-col justify-between">
+        <div>
+          <h3 class="text-xl font-bold text-white mb-2">Studio Pro</h3>
+          <p class="text-sm text-slate-400 mb-6">For VFX, game studios, and agency pipelines.</p>
+          <div class="text-4xl font-extrabold text-white mb-6">$199 <span class="text-base text-slate-500 font-normal">/ seat</span></div>
+          <ul class="space-y-3 text-sm text-slate-300">
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Multi-VM Concurrent Sandboxes</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>4K UHD Display Presets</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Agent Studio Pro In-VM HUD</span></li>
+            <li class="flex items-center space-x-3"><i class="fa-solid fa-check text-brand-400"></i><span>Priority Discord Support</span></li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-sm transition">Buy Studio Seats</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-12 text-slate-500 text-sm text-center">
+    <p>&copy; 2026 GhostCanvas 3D. All rights reserved. Blender is a registered trademark of the Blender Foundation.</p>
+  </footer>
+</body>
+</html>

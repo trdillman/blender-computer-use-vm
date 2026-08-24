@@ -18,6 +18,11 @@ try:
 except ImportError:
     from .hv_transport import HyperVSocketClient  # type: ignore
 
+try:
+    from licensing import LicenseManager
+except ImportError:
+    from .licensing import LicenseManager  # type: ignore
+
 # Server metadata
 SERVER_NAME = "blender-cu-vm-mcp"
 SERVER_VERSION = "1.0.0"
@@ -27,6 +32,7 @@ DEFAULT_VM_NAME = os.environ.get("BLENDER_VM_NAME", "Blender-CU-VM")
 GUEST_HTTP_URL = os.environ.get("BLENDER_GUEST_URL", "http://192.168.122.100:8000")
 
 client = HyperVSocketClient(fallback_http_url=GUEST_HTTP_URL)
+license_mgr = LicenseManager()
 
 
 # --- MCP Tool Registry ---
@@ -196,11 +202,46 @@ TOOLS = [
         "description": "Check status of the isolated VM, virtual display resolution, and daemon connectivity.",
         "inputSchema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "vm_license_status",
+        "description": "Check the commercial license status, tier, and hardware entitlements for GhostCanvas 3D.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "vm_activate_license",
+        "description": "Activate a commercial GhostCanvas 3D license key (GC3D-XXXX-YYYY...).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "license_key": {"type": "string", "description": "The commercial license key string"}
+            },
+            "required": ["license_key"]
+        },
+    },
 ]
 
 
 def handle_tool_call(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """Routes tool executions to guest daemon or host VM management."""
+    if tool_name == "vm_license_status":
+        return license_mgr.check_active_entitlement()
+
+    elif tool_name == "vm_activate_license":
+        key = args.get("license_key", "").strip()
+        is_valid, payload, msg = license_mgr.validate_license_key(key)
+        if is_valid:
+            license_mgr.save_license(key)
+            return {"status": "activated", "tier": payload.get("tier"), "message": msg}
+        return {"status": "activation_failed", "error": msg}
+
+    # Enforce active license gate
+    entitlement = license_mgr.check_active_entitlement()
+    if not entitlement.get("licensed"):
+        return {
+            "status": "license_required",
+            "message": "A valid GhostCanvas 3D license or active trial is required to execute VM computer-use actions."
+        }
+
     if tool_name == "vm_mouse_click":
         return client.request("/input/mouse/click", method="POST", payload=args)
 
