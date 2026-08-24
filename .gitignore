@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Hard Disks and Hyper-V artifacts
+*.vhdx
+*.vhd
+*.avhdx
+*.iso
+*.xml.backup
+
+# Video recordings and temporary test frames
+*.mp4
+*.mkv
+*.avi
+C:\Temp\
+temp/
+tmp/
+
+# Staged large binary builds (Blender release & NVIDIA DriverStore)
+staging/blender-5.2/
+staging/NvidiaDrivers/
+*.zip
+*.tar.xz
+*.msi
+
+# Node / JS artifacts
+node_modules/
+npm-debug.log*
+
+# Environment and IDE
+.env
+.env.local
+.vscode/
+.idea/

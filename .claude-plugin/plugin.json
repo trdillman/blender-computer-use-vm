@@ -1,0 +1,37 @@
+{
+  "name": "blender-computer-use-vm",
+  "version": "1.0.0",
+  "description": "Isolated GPU-partitioned VM & MCP Server for automated Blender 5.2 UI testing and Computer Use without host disruption.",
+  "author": {
+    "name": "Tyler"
+  },
+  "homepage": "https://github.com/Tyler/blender-computer-use-vm",
+  "repository": "https://github.com/Tyler/blender-computer-use-vm",
+  "license": "MIT",
+  "keywords": [
+    "blender",
+    "computer-use",
+    "mcp",
+    "hyper-v",
+    "gpu-pv",
+    "e2e-testing"
+  ],
+  "mcpServers": {
+    "blender-cu-vm": {
+      "command": "python",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/host/mcp_server.py"
+      ],
+      "env": {
+        "BLENDER_VM_NAME": "Blender-CU-VM",
+        "BLENDER_GUEST_URL": "http://192.168.122.100:8000"
+      }
+    }
+  },
+  "skills": [
+    {
+      "name": "blender-computer-use-vm",
+      "path": "skills/blender-computer-use-vm/SKILL.md"
+    }
+  ]
+}

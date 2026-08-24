@@ -1,0 +1,20 @@
+{
+  "name": "blender-computer-use-vm",
+  "version": "1.0.0",
+  "displayName": "Blender Computer-Use Isolated VM",
+  "description": "Run automated Blender 5.2 UI tests and Computer-Use workflows in an isolated local GPU-accelerated Hyper-V VM over MCP without moving host cursor or stealing window focus.",
+  "publisher": "Tyler",
+  "categories": [
+    "Testing",
+    "Automation",
+    "3D Graphics",
+    "Virtualization"
+  ],
+  "engines": {
+    "claude-code": ">=1.0.0",
+    "oh-my-pi": ">=18.0.0"
+  },
+  "icon": "assets/icon.png",
+  "mcpServerCount": 1,
+  "skillsCount": 1
+}
