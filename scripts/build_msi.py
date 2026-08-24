@@ -18,7 +18,7 @@ def generate_inno_setup_script(output_iss_path: str, source_dir: str):
 [Setup]
 AppId={{{{4C236B2B-6C3D-4A2B-8E27-6E274A2B9199}}}}
 AppName=GhostCanvas 3D
-AppVersion=1.1.0
+AppVersion=1.1.1
 AppPublisher=GhostCanvas
 AppPublisherURL=https://ghostcanvas3d.com
 AppSupportURL=https://ghostcanvas3d.com/docs
@@ -26,7 +26,7 @@ AppUpdatesURL=https://ghostcanvas3d.com/downloads
 DefaultDirName={{autopf}}\\GhostCanvas3D
 DefaultGroupName=GhostCanvas 3D
 DisableProgramGroupPage=yes
-OutputBaseFilename=GhostCanvas3D-Setup-v1.1.0
+OutputBaseFilename=GhostCanvas3D-Setup-v1.1.1
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -37,14 +37,14 @@ ArchitecturesInstallIn64BitMode=x64
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{source_dir}\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{source_dir}\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "\\dist\\*,\\staging\\*,\\.git\\*,\\__pycache__\\*,*.pyc"
 
 [Icons]
-Name: "{{group}}\\GhostCanvas 3D Manager"; Filename: "python.exe"; Parameters: "\x22{{app}}\\host\\tray_app.py\x22"
-Name: "{{commondesktop}}\\GhostCanvas 3D"; Filename: "python.exe"; Parameters: "\x22{{app}}\\host\\tray_app.py\x22"
+Name: "{{group}}\\GhostCanvas 3D Manager"; Filename: "python.exe"; Parameters: "\"\"{{app}}\\host\\tray_app.py\"\""
+Name: "{{commondesktop}}\\GhostCanvas 3D"; Filename: "python.exe"; Parameters: "\"\"{{app}}\\host\\tray_app.py\"\""
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File \x22{{app}}\\install.ps1\x22 -NonInteractive"; Description: "Provision Hyper-V VM and Register MCP Server"; Flags: runhidden
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File \"\"{{app}}\\install.ps1\"\" -NonInteractive"; Description: "Provision Hyper-V VM and Register MCP Server"; Flags: runhidden
 """
     with open(output_iss_path, "w", encoding="utf-8") as f:
         f.write(iss_content.strip())
@@ -64,7 +64,7 @@ def build_installer():
         print(f"Found Inno Setup Compiler: {iscc}. Compiling installer...")
         res = subprocess.run([iscc, iss_file], capture_output=True, text=True)
         if res.returncode == 0:
-            print("Installer compiled successfully into dist/Output/GhostCanvas3D-Setup-v1.1.0.exe")
+            print("Installer compiled successfully into dist/Output/GhostCanvas3D-Setup-v1.1.1.exe")
         else:
             print(f"Inno Setup warning: {res.stderr}")
     else:

@@ -1,7 +1,7 @@
 """
-Commercial Test Suite for GhostCanvas 3D.
+Commercial Test Suite for GhostCanvas 3D (v1.1.1).
 Validates:
-- Cryptographic license generation & validation
+- Cryptographic asymmetric license generation & validation
 - Tampered license rejection & hardware node-lock enforcement
 - Agent Studio Pro Blender Addon integration
 - MSI / Inno Setup builder script generation
@@ -34,51 +34,51 @@ class TestLicensingSubsystem(unittest.TestCase):
         self.hwid = self.mgr.get_hardware_fingerprint()
 
     def test_generate_and_validate_valid_key(self):
-        key = self.mgr.generate_license_key(
+        key = self.mgr.server_generate_license_key(
             customer_id="alice@studio.com",
             tier="indie",
             duration_days=365,
             hwid=self.hwid,
         )
         self.assertTrue(key.startswith("GC3D-"))
-        valid, payload, msg = self.mgr.validate_license_key(key, current_hwid=self.hwid)
+        valid, payload, msg = self.mgr.validate_license_key(key)
         self.assertTrue(valid)
         self.assertEqual(payload["tier"], "indie")
         self.assertEqual(payload["cust"], "alice@studio.com")
         self.assertIn("Valid INDIE License", msg)
 
     def test_tampered_license_rejection(self):
-        key = self.mgr.generate_license_key(
+        key = self.mgr.server_generate_license_key(
             customer_id="bob@studio.com",
             tier="studio_pro",
             duration_days=365,
             hwid=self.hwid,
         )
         # Tamper with the signature portion
-        tampered_key = key[:-2] + "99"
-        valid, _, msg = self.mgr.validate_license_key(tampered_key, current_hwid=self.hwid)
+        tampered_key = key[:-4] + "ABCD"
+        valid, _, msg = self.mgr.validate_license_key(tampered_key)
         self.assertFalse(valid)
         self.assertIn("signature verification failed", msg.lower())
 
     def test_hwid_node_lock_rejection(self):
-        key = self.mgr.generate_license_key(
+        key = self.mgr.server_generate_license_key(
             customer_id="charlie@studio.com",
             tier="indie",
             duration_days=365,
             hwid="DIFFERENT_HWID_99",
         )
-        valid, _, msg = self.mgr.validate_license_key(key, current_hwid=self.hwid)
+        valid, _, msg = self.mgr.validate_license_key(key)
         self.assertFalse(valid)
         self.assertIn("node-locked", msg.lower())
 
     def test_perpetual_license(self):
-        key = self.mgr.generate_license_key(
+        key = self.mgr.server_generate_license_key(
             customer_id="dave@studio.com",
             tier="enterprise",
             duration_days=None,  # Perpetual
             hwid=None,  # Floating
         )
-        valid, payload, _ = self.mgr.validate_license_key(key, current_hwid=self.hwid)
+        valid, payload, _ = self.mgr.validate_license_key(key)
         self.assertTrue(valid)
         self.assertEqual(payload["exp"], 0)
 
@@ -95,7 +95,7 @@ class TestMCPLicensingIntegration(unittest.TestCase):
 
     def test_vm_activate_license_tool(self):
         mgr = LicenseManager()
-        valid_key = mgr.generate_license_key(customer_id="test@agent.com", tier="studio_pro")
+        valid_key = mgr.server_generate_license_key(customer_id="test@agent.com", tier="studio_pro")
         res = handle_tool_call("vm_activate_license", {"license_key": valid_key})
         self.assertEqual(res.get("status"), "activated")
         self.assertEqual(res.get("tier"), "studio_pro")
@@ -124,7 +124,7 @@ class TestMSIBuilderScript(unittest.TestCase):
         with open(iss_path, "r", encoding="utf-8") as f:
             content = f.read()
             self.assertIn("GhostCanvas 3D", content)
-            self.assertIn("OutputBaseFilename=GhostCanvas3D-Setup-v1.1.0", content)
+            self.assertIn("OutputBaseFilename=GhostCanvas3D-Setup-v1.1.1", content)
 
 
 if __name__ == "__main__":

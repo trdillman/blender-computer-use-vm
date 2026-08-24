@@ -5,14 +5,18 @@ Exposes REST/JSON & binary endpoints for:
 - Hardware input injection (clicks, drags, scroll, text, hotkeys)
 - UI Automation tree inspection & window focus
 - NVENC video recording
+- Blender 5.2 in-process telemetry bridge proxy (/blender/eval)
 - System health and GPU status metrics
 """
 
 from __future__ import annotations
 
+import json
 import os
+import socket
+import threading
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
@@ -29,15 +33,24 @@ except ImportError:
 
 app = FastAPI(
     title="Blender Computer-Use Guest Daemon",
-    version="1.0.0",
+    version="1.1.1",
     description="Low-latency API daemon for isolated desktop and Blender UI automation.",
 )
 
-# Instantiate core engines
+# Core engines & Concurrency lock
 screen_engine = ScreenCaptureEngine()
 input_ctrl = InputController()
 ui_inspector = UIAutomationInspector()
 video_rec = VideoRecorder(screen_engine=screen_engine)
+_INPUT_LOCK = threading.Lock()
+
+# Auth Secret (if set, requests must pass X-Session-Secret header)
+AUTH_SECRET = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+
+
+def verify_auth_token(x_session_secret: Optional[str] = Header(None)):
+    if AUTH_SECRET and x_session_secret != AUTH_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid session secret")
 
 
 # --- Pydantic Request Models ---
@@ -84,6 +97,10 @@ class VideoRecordRequest(BaseModel):
     use_nvenc: bool = True
 
 
+class BlenderEvalRequest(BaseModel):
+    expression: str = Field(..., description="Python expression to evaluate in Blender")
+
+
 # --- Endpoints ---
 @app.get("/health")
 def health_check() -> Dict[str, Any]:
@@ -128,46 +145,51 @@ def capture_screen(
 
 @app.post("/input/mouse/click")
 def api_mouse_click(req: MouseClickRequest) -> Dict[str, Any]:
-    input_ctrl.mouse_click(
-        x=req.x,
-        y=req.y,
-        button=req.button,
-        clicks=req.clicks,
-        modifiers=req.modifiers,
-    )
+    with _INPUT_LOCK:
+        input_ctrl.mouse_click(
+            x=req.x,
+            y=req.y,
+            button=req.button,
+            clicks=req.clicks,
+            modifiers=req.modifiers,
+        )
     return {"status": "success", "action": "mouse_click", "params": req.model_dump()}
 
 
 @app.post("/input/mouse/drag")
 def api_mouse_drag(req: MouseDragRequest) -> Dict[str, Any]:
-    input_ctrl.mouse_drag(
-        start_x=req.start_x,
-        start_y=req.start_y,
-        end_x=req.end_x,
-        end_y=req.end_y,
-        button=req.button,
-        duration_ms=req.duration_ms,
-        steps=req.steps,
-        modifiers=req.modifiers,
-    )
+    with _INPUT_LOCK:
+        input_ctrl.mouse_drag(
+            start_x=req.start_x,
+            start_y=req.start_y,
+            end_x=req.end_x,
+            end_y=req.end_y,
+            button=req.button,
+            duration_ms=req.duration_ms,
+            steps=req.steps,
+            modifiers=req.modifiers,
+        )
     return {"status": "success", "action": "mouse_drag", "params": req.model_dump()}
 
 
 @app.post("/input/mouse/scroll")
 def api_mouse_scroll(req: MouseScrollRequest) -> Dict[str, Any]:
-    input_ctrl.mouse_scroll(x=req.x, y=req.y, delta_y=req.delta_y, delta_x=req.delta_x)
+    with _INPUT_LOCK:
+        input_ctrl.mouse_scroll(x=req.x, y=req.y, delta_y=req.delta_y, delta_x=req.delta_x)
     return {"status": "success", "action": "mouse_scroll", "params": req.model_dump()}
 
 
 @app.post("/input/keyboard/type")
 def api_type_text(req: TypeTextRequest) -> Dict[str, Any]:
-    input_ctrl.type_text(text=req.text, cpm=req.cpm)
+    with _INPUT_LOCK:
+        input_ctrl.type_text(text=req.text, cpm=req.cpm)
     return {"status": "success", "action": "type_text", "length": len(req.text)}
 
 
 @app.post("/input/keyboard/press")
 def api_key_press(req: KeyPressRequest) -> Dict[str, Any]:
-    input_ctrl.key_press(keys=req.keys, hold_ms=req.hold_ms)
+    with _INPUT_LOCK:
+        input_ctrl.key_press(keys=req.keys, hold_ms=req.hold_ms)
     return {"status": "success", "action": "key_press", "keys": req.keys}
 
 
@@ -206,8 +228,25 @@ def api_video_record(req: VideoRecordRequest) -> Dict[str, Any]:
         return video_rec.get_status()
 
 
+@app.post("/blender/eval")
+def api_blender_eval(req: BlenderEvalRequest) -> Dict[str, Any]:
+    """
+    Proxy endpoint forwarding evaluation directly to in-process Blender TCP telemetry bridge.
+    """
+    bridge_port = int(os.environ.get("BLENDER_BRIDGE_PORT", 9199))
+    try:
+        with socket.create_connection(("127.0.0.1", bridge_port), timeout=5.0) as s:
+            payload = json.dumps({"action": "eval", "expression": req.expression}).encode("utf-8")
+            s.sendall(payload)
+            resp_bytes = s.recv(65536)
+            return json.loads(resp_bytes.decode("utf-8"))
+    except Exception as e:
+        return {"status": "bridge_unavailable", "error": str(e), "expression": req.expression}
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("GUEST_DAEMON_PORT", 8000))
-    print(f"Starting Blender Computer-Use Guest Daemon on port {port}...")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    host = os.environ.get("GUEST_DAEMON_HOST", "0.0.0.0")
+    print(f"Starting Blender Computer-Use Guest Daemon on {host}:{port}...")
+    uvicorn.run(app, host=host, port=port)

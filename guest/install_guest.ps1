@@ -47,7 +47,7 @@ $DaemonScript = Join-Path $ScriptDir "guest_daemon.py"
 $VbsLauncher = Join-Path $ScriptDir "start_daemon_hidden.vbs"
 $VbsContent = @"
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "python `"$DaemonScript`"", 0, False
+WshShell.Run """python"" """ & "$DaemonScript" & """", 0, False
 "@
 Set-Content -Path $VbsLauncher -Value $VbsContent -Encoding ASCII
 

@@ -1,6 +1,6 @@
 {
   "name": "blender-computer-use-vm",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Isolated GPU-partitioned VM & MCP Server for automated Blender 5.2 UI testing and Computer Use without host disruption.",
   "author": {
     "name": "Tyler"

@@ -29,6 +29,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Test-AdminPrivileges {
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-AdminPrivileges)) {
+    throw "Administrative privileges required to manage Hyper-V checkpoints."
+}
+
 function Get-TargetVM {
     $vm = Get-VM -Name $VMName -ErrorAction SilentlyContinue
     if (-not $vm) {
@@ -69,6 +78,14 @@ switch ($Action) {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         Restore-VMSnapshot -VMName $VMName -Name $SnapshotName -Confirm:$false
         
+        # Poll until VM finishes transitional restoring state
+        $deadline = (Get-Date).AddSeconds(15)
+        while ((Get-Date) -lt $deadline) {
+            $state = (Get-VM -Name $VMName).State
+            if ($state -ne "Restoring") { break }
+            Start-Sleep -Milliseconds 200
+        }
+
         # Ensure VM is started after restore if it was running
         $currentVM = Get-VM -Name $VMName
         if ($currentVM.State -ne "Running") {

@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 from typing import Any, Dict
@@ -293,10 +294,19 @@ def handle_tool_call(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         return client.request("/blender/eval", method="POST", payload=args)
 
     elif tool_name == "vm_session_reset":
-        snapshot = args.get("snapshot_name", "golden_base")
-        cmd = f'powershell -NoProfile -Command "Restore-VMSnapshot -VMName \'{DEFAULT_VM_NAME}\' -Name \'{snapshot}\' -Confirm:$false; Start-VM -Name \'{DEFAULT_VM_NAME}\' -ErrorAction SilentlyContinue"'
+        snapshot = str(args.get("snapshot_name", "golden_base")).strip()
+        # Strict alphanumeric and safe symbol validation
+        if not re.match(r"^[a-zA-Z0-9_\-\.]+$", snapshot) or not re.match(r"^[a-zA-Z0-9_\-\.]+$", DEFAULT_VM_NAME):
+            return {"status": "error", "message": "Invalid snapshot or VM name (allowed: alphanumeric, _, -, .)"}
+
+        ps_cmd = [
+            "powershell.exe",
+            "-NoProfile",
+            "-Command",
+            f"Restore-VMSnapshot -VMName '{DEFAULT_VM_NAME}' -Name '{snapshot}' -Confirm:$false; Start-VM -Name '{DEFAULT_VM_NAME}' -ErrorAction SilentlyContinue"
+        ]
         try:
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+            res = subprocess.run(ps_cmd, shell=False, capture_output=True, text=True, timeout=15)
             return {"status": "success", "snapshot": snapshot, "output": res.stdout.strip()}
         except Exception as e:
             return {"status": "error", "message": str(e)}

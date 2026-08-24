@@ -23,7 +23,7 @@ def build_release_package():
     dist_dir = os.path.join(root_dir, "dist")
     os.makedirs(dist_dir, exist_ok=True)
 
-    release_zip_path = os.path.join(dist_dir, "blender-computer-use-vm-v1.1.0.zip")
+    release_zip_path = os.path.join(dist_dir, "blender-computer-use-vm-v1.1.1.zip")
     checksum_file_path = os.path.join(dist_dir, "CHECKSUMS.txt")
 
     # Files and directories to include in release
@@ -66,8 +66,8 @@ def build_release_package():
     zip_size_kb = os.path.getsize(release_zip_path) / 1024
 
     with open(checksum_file_path, "w", encoding="utf-8") as f:
-        f.write(f"# SHA256 Checksums for blender-computer-use-vm v1.1.0\n")
-        f.write(f"{zip_sha}  blender-computer-use-vm-v1.1.0.zip ({zip_size_kb:.1f} KB)\n\n")
+        f.write(f"# SHA256 Checksums for blender-computer-use-vm v1.1.1\n")
+        f.write(f"{zip_sha}  blender-computer-use-vm-v1.1.1.zip\n\n")
         f.write(f"# Component File Manifest\n")
         for arcname, sha in sorted(manifest_entries):
             f.write(f"{sha}  {arcname}\n")

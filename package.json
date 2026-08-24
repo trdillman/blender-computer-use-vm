@@ -1,6 +1,6 @@
 {
   "name": "blender-computer-use-vm",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Isolated GPU-accelerated local VM & MCP Server for automated Blender UI testing and Computer-Use workflows without host desktop disturbance.",
   "main": "host/mcp_server.py",
   "type": "module",

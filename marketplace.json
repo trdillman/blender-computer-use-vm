@@ -1,6 +1,6 @@
 {
   "name": "blender-computer-use-vm",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "displayName": "Blender Computer-Use Isolated VM",
   "description": "Run automated Blender 5.2 UI tests and Computer-Use workflows in an isolated local GPU-accelerated Hyper-V VM over MCP without moving host cursor or stealing window focus.",
   "publisher": "Tyler",

@@ -23,10 +23,16 @@ class StateInspector:
                 return {"status": "cycles_not_available"}
 
             cprefs = cycles_prefs.preferences
-            devices = getattr(cprefs, "get_devices", lambda: [])()  # type: ignore
+            # Blender 4.2+ / 5.2 LTS API compatibility
+            if hasattr(cprefs, "refresh_devices"):
+                cprefs.refresh_devices()
+            elif hasattr(cprefs, "get_devices"):
+                cprefs.get_devices()
+
+            raw_devices = getattr(cprefs, "devices", [])
             device_list: List[Dict[str, Any]] = []
 
-            for dev in (devices[0] if isinstance(devices, tuple) else devices):
+            for dev in raw_devices:
                 device_list.append({
                     "name": dev.name,
                     "type": dev.type,

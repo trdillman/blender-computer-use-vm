@@ -122,6 +122,11 @@ Set-Content -Path (Join-Path $StagingDir "install_gpupv_guest.bat") -Value $Gues
 # 4. Handle Execution Modes
 if ($Mode -eq "MountVHD") {
     Write-Host "`nMounting VHDX for offline driver injection: $VHDXPath" -ForegroundColor Cyan
+    $TargetVM = Get-VM -Name $VMName -ErrorAction SilentlyContinue
+    if ($TargetVM -and $TargetVM.State -ne "Off") {
+        throw "Cannot perform offline VHDX injection while VM '$VMName' is in '$($TargetVM.State)' state. Stop the VM first."
+    }
+
     if (-not (Test-Path $VHDXPath)) {
         throw "VHDX file not found at: $VHDXPath"
     }

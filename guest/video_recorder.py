@@ -1,7 +1,7 @@
 """
 Hardware Video Recorder & Ring Buffer for Computer-Use VM.
 Records virtual desktop sessions to high-efficiency MP4 video using NVIDIA NVENC
-hardware acceleration (h264_nvenc) with automatic software fallback.
+hardware acceleration (h264_nvenc) with thread generation tracking and clean teardowns.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ class VideoRecorder:
     def __init__(self, screen_engine: Optional[ScreenCaptureEngine] = None):
         self.screen_engine = screen_engine or ScreenCaptureEngine()
         self._is_recording = False
+        self._generation_id = 0
         self._thread: Optional[threading.Thread] = None
         self._ffmpeg_process: Optional[subprocess.Popen[bytes]] = None
         self._output_path: Optional[str] = None
@@ -44,9 +45,6 @@ class VideoRecorder:
         fps: int = 30,
         use_nvenc: bool = True,
     ) -> Dict[str, Any]:
-        """
-        Starts recording the virtual desktop to an MP4 file.
-        """
         with self._lock:
             if self._is_recording:
                 return {
@@ -55,23 +53,22 @@ class VideoRecorder:
                     "elapsed_seconds": round(time.time() - self._start_time, 2),
                 }
 
-            # Ensure output directory exists
             out_dir = os.path.dirname(os.path.abspath(output_path))
             if out_dir and not os.path.exists(out_dir):
                 os.makedirs(out_dir, exist_ok=True)
 
+            self._generation_id += 1
+            gen_id = self._generation_id
             self._output_path = output_path
             self._fps = fps
             self._frame_count = 0
             self._start_time = time.time()
             self._is_recording = True
 
-            # Determine ffmpeg encoder
             encoder = "h264_nvenc" if use_nvenc else "libx264"
             ffmpeg_bin = shutil.which("ffmpeg")
 
             if ffmpeg_bin:
-                # Spawn pipe-based ffmpeg subprocess
                 cmd = [
                     ffmpeg_bin,
                     "-y",
@@ -97,8 +94,7 @@ class VideoRecorder:
                 except Exception:
                     self._ffmpeg_process = None
 
-            # Start asynchronous frame capture thread
-            self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+            self._thread = threading.Thread(target=self._capture_loop, args=(gen_id,), daemon=True)
             self._thread.start()
 
             return {
@@ -108,26 +104,25 @@ class VideoRecorder:
                 "encoder": encoder if self._ffmpeg_process else "frame_sequence",
             }
 
-    def _capture_loop(self) -> None:
-        """Background thread feeding frames to FFmpeg stdin or in-memory buffer."""
+    def _capture_loop(self, gen_id: int) -> None:
         interval = 1.0 / self._fps
 
-        while self._is_recording:
+        while self._is_recording and self._generation_id == gen_id:
             loop_start = time.time()
             frame = self.screen_engine.capture_frame()
 
-            if self._ffmpeg_process and self._ffmpeg_process.stdin:
+            proc = self._ffmpeg_process
+            if proc and proc.stdin and not proc.stdin.closed:
                 try:
-                    # Ensure exact size
                     if frame.size != (self.screen_engine.default_width, self.screen_engine.default_height):
                         frame = frame.resize(
                             (self.screen_engine.default_width, self.screen_engine.default_height),
                             Image.Resampling.BILINEAR,
                         )
                     raw_bytes = frame.convert("RGB").tobytes()
-                    self._ffmpeg_process.stdin.write(raw_bytes)
+                    proc.stdin.write(raw_bytes)
                 except Exception:
-                    pass
+                    break
 
             self._frame_count += 1
             elapsed = time.time() - loop_start
@@ -136,34 +131,31 @@ class VideoRecorder:
                 time.sleep(sleep_time)
 
     def stop_recording(self) -> Dict[str, Any]:
-        """
-        Stops active recording and finalizes the video container.
-        """
         with self._lock:
             if not self._is_recording:
                 return {"status": "not_recording"}
 
             self._is_recording = False
+            self._generation_id += 1
 
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
+            self._thread = None
 
         if self._ffmpeg_process:
-            if self._ffmpeg_process.stdin:
+            if self._ffmpeg_process.stdin and not self._ffmpeg_process.stdin.closed:
                 try:
                     self._ffmpeg_process.stdin.close()
                 except Exception:
                     pass
             try:
-                self._ffmpeg_process.wait(timeout=5.0)
+                self._ffmpeg_process.wait(timeout=3.0)
             except Exception:
                 self._ffmpeg_process.kill()
             self._ffmpeg_process = None
 
         duration = time.time() - self._start_time
-        file_size = 0
-        if self._output_path and os.path.exists(self._output_path):
-            file_size = os.path.getsize(self._output_path)
+        file_size = os.path.getsize(self._output_path) if self._output_path and os.path.exists(self._output_path) else 0
 
         return {
             "status": "stopped",
@@ -175,7 +167,6 @@ class VideoRecorder:
         }
 
     def get_status(self) -> Dict[str, Any]:
-        """Returns current recording state metrics."""
         if not self._is_recording:
             return {"is_recording": False}
 
@@ -187,13 +178,3 @@ class VideoRecorder:
             "frame_count": self._frame_count,
             "current_fps": round(self._frame_count / max(0.1, duration), 1),
         }
-
-
-if __name__ == "__main__":
-    recorder = VideoRecorder()
-    print("Testing VideoRecorder initialization...")
-    res = recorder.start_recording(output_path="C:\\Temp\\test_run.mp4", fps=30)
-    print("Start:", res)
-    time.sleep(1.0)
-    stop_res = recorder.stop_recording()
-    print("Stop:", stop_res)

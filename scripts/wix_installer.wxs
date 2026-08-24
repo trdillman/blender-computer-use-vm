@@ -3,7 +3,7 @@
   <Product Id="*"
            Name="GhostCanvas 3D - Blender Computer-Use VM"
            Language="1033"
-           Version="1.1.0.0"
+           Version="1.1.1.0"
            Manufacturer="GhostCanvas"
            UpgradeCode="4C236B2B-6C3D-4A2B-8E27-6E274A2B9199">
 
@@ -15,7 +15,6 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of GhostCanvas 3D is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <!-- Directory Structure -->
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLFOLDER" Name="GhostCanvas3D">
@@ -24,19 +23,19 @@
           <Directory Id="BlenderDir" Name="blender" />
           <Directory Id="ScriptsDir" Name="scripts" />
           <Directory Id="SkillsDir" Name="skills" />
+          <Directory Id="TestsDir" Name="tests" />
         </Directory>
-      </Directory>
-      <Directory Id="ProgramMenuFolder">
-        <Directory Id="ApplicationProgramsFolder" Name="GhostCanvas 3D" />
       </Directory>
     </Directory>
 
-    <!-- Components -->
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-      <Component Id="MainExecutable" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9101" Win64="yes">
+      <Component Id="RootFiles" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9101" Win64="yes">
         <File Id="InstallPy" Source="$(var.SourceDir)\install.py" KeyPath="yes" />
         <File Id="InstallBat" Source="$(var.SourceDir)\install.bat" />
+        <File Id="InstallPs1" Source="$(var.SourceDir)\install.ps1" />
         <File Id="PackageJson" Source="$(var.SourceDir)\package.json" />
+        <File Id="MarketplaceJson" Source="$(var.SourceDir)\marketplace.json" />
+        <File Id="McpConfigJson" Source="$(var.SourceDir)\mcp-config.json" />
         <File Id="ReadmeMd" Source="$(var.SourceDir)\README.md" />
       </Component>
       <Component Id="HostComponents" Directory="HostDir" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9102" Win64="yes">
@@ -45,11 +44,25 @@
         <File Id="LicensingPy" Source="$(var.SourceDir)\host\licensing.py" />
         <File Id="VmControllerPy" Source="$(var.SourceDir)\host\vm_controller.py" />
         <File Id="AssetSyncPy" Source="$(var.SourceDir)\host\asset_sync.py" />
+        <File Id="TrayAppPy" Source="$(var.SourceDir)\host\tray_app.py" />
+      </Component>
+      <Component Id="GuestComponents" Directory="GuestDir" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9103" Win64="yes">
+        <File Id="GuestDaemonPy" Source="$(var.SourceDir)\guest\guest_daemon.py" KeyPath="yes" />
+        <File Id="ScreenCapturePy" Source="$(var.SourceDir)\guest\screen_capture.py" />
+        <File Id="InputControllerPy" Source="$(var.SourceDir)\guest\input_controller.py" />
+        <File Id="UiAutomationPy" Source="$(var.SourceDir)\guest\ui_automation.py" />
+        <File Id="VideoRecorderPy" Source="$(var.SourceDir)\guest\video_recorder.py" />
+        <File Id="InstallGuestPs1" Source="$(var.SourceDir)\guest\install_guest.ps1" />
+      </Component>
+      <Component Id="BlenderComponents" Directory="BlenderDir" Guid="30B0B8C2-48E0-496E-A342-6E274A2B9104" Win64="yes">
+        <File Id="CuTelemetryBridgePy" Source="$(var.SourceDir)\blender\cu_telemetry_bridge.py" KeyPath="yes" />
+        <File Id="AgentStudioProPy" Source="$(var.SourceDir)\blender\agent_studio_pro.py" />
+        <File Id="StateInspectorPy" Source="$(var.SourceDir)\blender\state_inspector.py" />
+        <File Id="CrashInterceptorPy" Source="$(var.SourceDir)\blender\crash_interceptor.py" />
       </Component>
     </ComponentGroup>
 
-    <!-- Features -->
-    <Feature Id="ProductFeature" Title="GhostCanvas 3D Core" Level="1">
+    <Feature Id="ProductFeature" Title="GhostCanvas 3D Complete" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
     </Feature>
   </Product>

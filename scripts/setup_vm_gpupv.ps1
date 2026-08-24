@@ -59,8 +59,7 @@ function Test-AdminPrivileges {
 
 # --- Step 0: Privilege Check ---
 if (-not (Test-AdminPrivileges)) {
-    Write-Warning "This script requires Administrator privileges. Please re-run in an elevated PowerShell session."
-    # We exit cleanly with a non-zero code or throw when running non-interactively
+    throw "Administrative privileges required. Please run in an elevated PowerShell session."
 }
 
 $VHDXPath = Join-Path $VMDirectory "Virtual Hard Disks\$VMName.vhdx"
