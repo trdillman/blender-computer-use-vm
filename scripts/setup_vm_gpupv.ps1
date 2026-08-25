@@ -113,11 +113,11 @@ if ($ExistingVM) {
 }
 
 # Apply Hardware Settings
-Set-VM -Name $VMName -ProcessorCount $ProcessorCount -AutomaticCheckpointsEnabled $false
-Set-VMMemory -Name $VMName -DynamicMemoryEnabled $false
+Set-VM -VMName $VMName -ProcessorCount $ProcessorCount -AutomaticCheckpointsEnabled $false
+Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $false
 
 # Configure Firmware (Secure Boot & TPM)
-Set-VMFirmware -Name $VMName -EnableSecureBoot On -SecureBootTemplate "MicrosoftWindows"
+Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplate "MicrosoftWindows"
 
 # --- Step 4: GPU-Partitioning (GPU-PV) Configuration ---
 Write-Step "Configuring GPU Partitioning (GPU-PV) parameters..." 4

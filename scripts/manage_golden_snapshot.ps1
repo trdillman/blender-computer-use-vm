@@ -101,7 +101,7 @@ switch ($Action) {
         if (-not $snapshots) {
             Write-Host "No checkpoints found for VM '$VMName'." -ForegroundColor Yellow
         } else {
-            Write-Host "`nExisting Checkpoints for $VMName:" -ForegroundColor Green
+            Write-Host "`nExisting Checkpoints for $($VMName):" -ForegroundColor Green
             $snapshots | Select-Object Name, CreationTime, SnapshotType, ParentSnapshotName | Format-Table -AutoSize
         }
     }
