@@ -86,8 +86,10 @@ if (Test-Path $PythonScript) {
 Write-Host "`n[6/6] Installation & Registration Complete!" -ForegroundColor Green
 Write-Host "--------------------------------------------------------------------------------"
 Write-Host "Next Steps for Guest VM Setup:"
-Write-Host "1. Start the VM and install Windows 11 (attach Windows 11 ISO if needed)."
-Write-Host "2. Inside the VM, run: C:\tmp\blender-cu-vm\guest\install_guest.ps1"
-Write-Host "3. Once running, create your golden base snapshot:"
+Write-Host "1. Deploy the guest OS unattended (one command, fully hands-off):"
+Write-Host "   .\scripts\deploy_guest_os.ps1 -WindowsISO 'C:\ISOs\Win11_24H2_English_x64.iso'"
+Write-Host "2. Stage GPU-PV drivers into the running guest:"
+Write-Host "   .\scripts\stage_gpupv_drivers.ps1 -VMName $VMName -Mode OnlineCopy"
+Write-Host "3. Once the daemon is healthy, create your golden base snapshot:"
 Write-Host "   powershell .\scripts\manage_golden_snapshot.ps1 -Action Create"
 Write-Host "--------------------------------------------------------------------------------`n"

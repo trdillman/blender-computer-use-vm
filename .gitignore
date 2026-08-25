@@ -25,6 +25,10 @@ staging/NvidiaDrivers/
 *.tar.xz
 *.msi
 
+# Release artifacts: only the checksum manifest is tracked
+dist/*
+!dist/CHECKSUMS.txt
+
 # Node / JS artifacts
 node_modules/
 npm-debug.log*

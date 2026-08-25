@@ -81,28 +81,33 @@ blender-cu-vm/
 
 ## 4. Setup & Installation Guide
 
-### Step 1: Provision the VM on Host (PowerShell as Administrator)
+### Step 1: One-Command Unattended Deployment (PowerShell as Administrator)
+Provisions the VM if missing, builds the unattended bootstrap ISO
+(`scripts\build_bootstrap_media.ps1`, IMAPI2 — no ADK needed), attaches it
+alongside the Windows 11 install ISO, boots the VM, and polls the guest
+daemon health endpoint until the fully-unattended chain
+(OOBE → auto-logon → `bootstrap.cmd` → `install_guest.ps1` → daemon on
+`192.168.122.100:8000`) completes:
 ```powershell
-cd C:\tmp\blender-cu-vm\scripts
-.\setup_vm_gpupv.ps1 -VMName "Blender-CU-VM" -MemoryBytes 8GB -ProcessorCount 8
+cd C:\tmp\blender-cu-vm
+.\scripts\deploy_guest_os.ps1 -WindowsISO "C:\ISOs\Win11_24H2_English_x64.iso"
+# Watch graphically at any time:  vmconnect.exe localhost Blender-CU-VM
 ```
 
-### Step 2: Stage NVIDIA GPU-PV Drivers
+### Step 2: Stage NVIDIA GPU-PV Drivers (host side)
+Mirror the host RTX 4080 Super driver binaries into the guest. Use `Stage`
+before install, or `OnlineCopy` once the guest OS is running:
 ```powershell
-.\stage_gpupv_drivers.ps1 -VMName "Blender-CU-VM" -Mode "Stage"
+.\scripts\stage_gpupv_drivers.ps1 -VMName "Blender-CU-VM" -Mode "OnlineCopy"
 ```
 
-### Step 3: Install Guest OS & Run Environment Setup
-Inside the guest VM (via PowerShell as Administrator):
+### Step 3: Manual guest setup (only if not using the unattended path)
+The unattended chain above already runs `guest\install_guest.ps1` (static IP
+`192.168.122.100`, GPU-PV drivers if staged, 1080p virtual display lock,
+hidden daemon startup). To run it by hand inside the guest instead:
 ```powershell
-# 1. Install GPU-PV drivers from staged directory
-C:\Temp\NvidiaDrivers\install_gpupv_guest.bat
-
-# 2. Configure Virtual Display & Auto-Logon
-.\setup_virtual_display.ps1 -TargetWidth 1920 -TargetHeight 1080
-
-# 3. Start Guest Daemon on boot
-python C:\blender-cu-vm\guest\guest_daemon.py
+# From the bootstrap DVD drive (e.g. E:) or C:\BlenderCU\guest:
+powershell -ExecutionPolicy Bypass -File .\install_guest.ps1
 ```
 
 ### Step 4: Create the Golden Base Snapshot

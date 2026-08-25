@@ -51,6 +51,22 @@ Three tiers, strictly one-directional:
 ### Repo conventions
 
 - **Windows-only codebase** (Win32 ctypes, Hyper-V, PowerShell). Primary shell is PowerShell.
+- **Host safety (mandatory review gate every iteration):** before commit/push,
+  audit changed files for host-destructive operations — disk wipe/format,
+  `Remove-Item -Recurse` outside project paths, Winlogon/registry mutation,
+  input injection on the host, wholesale overwrite of user config
+  (`~/.claude.json`, `~/.omp`). Flag findings in the loop progress doc and
+  neutralize (runtime guard or move to `quarantine/`) before proceeding.
+- `scripts/autounattend.xml` sets `WillWipeDisk=true` — it erases Disk 0 of
+  whatever machine consumes it. Guest-VM-only by design: never write the
+  bootstrap ISO to physical media or boot it on real hardware.
+- Guest-config scripts (`scripts/setup_virtual_display.ps1`,
+  `guest/install_guest.ps1`) abort unless run inside the VM
+  (`COMPUTERNAME -eq "BLENDER-CU-VM"`) or `BLENDER_CU_ALLOW_HOST=1` is set.
+- `install.py` refuses to touch `~/.claude.json` on parse failure and always
+  writes a timestamped `.backup-*` copy before modifying it.
+- Input-injection tests (`TestInputController`) skip unless
+  `BLENDER_CU_ALLOW_HOST_INPUT=1`; run them inside the guest, never on the host.
 - `staging/` holds multi-GB untracked payloads (Blender 5.2, NVIDIA GPU-PV drivers) — gitignored; never stage them. Test artifacts go to `C:\Temp` (also gitignored).
 - The skill `blender-computer-use-vm/SKILL.md` exists in **three mirror copies** — `skills/` (canonical, used by `.claude-plugin/plugin.json`), `.claude/skills/`, and `.skills/` (for OMP) — so different loaders pick it up zero-config. Update all three together.
 - Version strings live in `package.json`, `marketplace.json`, and `.claude-plugin/plugin.json` — bump all three together.

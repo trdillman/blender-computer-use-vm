@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ===================================================================== -->
+<!-- !! DANGER - DISK-WIPING ANSWER FILE !!                                 -->
+<!-- WillWipeDisk=true ERASES Disk 0 of whatever machine consumes this file.-->
+<!-- Intended EXCLUSIVELY for the isolated Blender-CU-VM Hyper-V guest,     -->
+<!-- attached as a virtual DVD. NEVER write this ISO to physical media or   -->
+<!-- boot it on real hardware.                                              -->
+<!-- Also disables UAC (EnableLUA=0) inside the guest - disposable test VM. -->
+<!-- ===================================================================== -->
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
   <!-- Windows PE Setup & Disk Partitioning -->
   <settings pass="windowsPE">
@@ -107,6 +115,20 @@
       <ComputerName>BLENDER-CU-VM</ComputerName>
       <TimeZone>UTC</TimeZone>
     </component>
+    <!-- Isolated disposable test VM: guarantee FirstLogonCommands run with a
+         full admin token so install_guest.ps1 can configure the network stack. -->
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Path>reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+    </component>
   </settings>
 
   <!-- OOBE & AutoLogon Phase -->
@@ -163,6 +185,11 @@
           <Order>3</Order>
           <CommandLine>powercfg /change standby-timeout-ac 0</CommandLine>
           <Description>Disable Standby</Description>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>10</Order>
+          <CommandLine>cmd /c for %d in (C D E F G H I J) do if exist %d:\bootstrap.cmd (%d:\bootstrap.cmd)</CommandLine>
+          <Description>Launch Blender-CU-VM guest bootstrap payload</Description>
         </SynchronousCommand>
       </FirstLogonCommands>
     </component>

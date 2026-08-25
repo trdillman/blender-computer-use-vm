@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +32,11 @@ def register_claude_json() -> bool:
             with open(claude_json_path, "r", encoding="utf-8") as f:
                 config_data = json.load(f)
         except Exception as e:
-            print(f"  ! Warning: Could not parse existing .claude.json: {e}")
+            # SAFETY: writing a fresh dict here would DESTROY the user's entire
+            # Claude Code configuration. Refuse instead.
+            print(f"  ! REFUSING to modify {claude_json_path}: existing file failed to parse ({e}).")
+            print("    Back up or repair the file manually, then re-run.")
+            sys.exit(1)
 
     if "mcpServers" not in config_data:
         config_data["mcpServers"] = {}
@@ -47,6 +52,10 @@ def register_claude_json() -> bool:
     }
 
     try:
+        if os.path.exists(claude_json_path):
+            backup_path = claude_json_path + time.strftime(".backup-%Y%m%d-%H%M%S")
+            shutil.copy2(claude_json_path, backup_path)
+            print(f"  + Backup written: {backup_path}")
         with open(claude_json_path, "w", encoding="utf-8") as f:
             json.dump(config_data, f, indent=2)
         print(f"  + Successfully registered 'blender-cu-vm' in {claude_json_path}")

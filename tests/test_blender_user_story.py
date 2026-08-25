@@ -65,6 +65,11 @@ class TestScreenCapture(unittest.TestCase):
         self.assertTrue(res_diff["similarity"] < 0.5)
 
 
+@unittest.skipUnless(
+    os.environ.get("BLENDER_CU_ALLOW_HOST_INPUT") == "1",
+    "Injects real Win32 input — runs only inside the guest VM, or on the host "
+    "with BLENDER_CU_ALLOW_HOST_INPUT=1 (will move your physical cursor).",
+)
 class TestInputController(unittest.TestCase):
     """Validates Win32 input mappings and cursor querying."""
 

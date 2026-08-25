@@ -33,6 +33,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# --- HOST-SAFETY GUARD ------------------------------------------------------
+# This script mutates machine-wide Winlogon auto-logon, local users, and DPI.
+# It is intended ONLY for the isolated Blender-CU-VM guest. Accidentally running
+# it on the host would hijack the host's logon configuration.
+if ($env:COMPUTERNAME -ne "BLENDER-CU-VM" -and $env:BLENDER_CU_ALLOW_HOST -ne "1") {
+    throw "SAFETY ABORT: '$($env:COMPUTERNAME)' is not the guest VM (BLENDER-CU-VM). This script modifies Winlogon/DPI/user config and must run inside the guest only. Set BLENDER_CU_ALLOW_HOST=1 to override at your own risk."
+}
+
 Write-Host "=== Guest Environment & Virtual Display Setup ===" -ForegroundColor Cyan
 
 # --- 1. Power Settings: Never Sleep or Turn Off Display ---
