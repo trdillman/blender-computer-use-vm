@@ -16,6 +16,9 @@ import os
 import sys
 import time
 import unittest
+from unittest.mock import Mock, patch
+
+from fastapi.testclient import TestClient
 from PIL import Image
 
 # Add guest, host, blender modules to import path
@@ -30,6 +33,8 @@ from ui_automation import UIAutomationInspector
 from video_recorder import VideoRecorder
 from state_inspector import StateInspector
 from cu_telemetry_bridge import TelemetryBridgeServer
+import guest_daemon
+import mcp_server
 from mcp_server import TOOLS, handle_tool_call
 
 
@@ -171,6 +176,91 @@ class TestMCPServer(unittest.TestCase):
     def test_tool_call_dispatch(self):
         res = handle_tool_call("vm_screenshot", {"region": "0,0,100,100", "format": "png"})
         self.assertIsInstance(res, dict)
+
+
+class TestGuestMouseMoveEndpoint(unittest.TestCase):
+    """Validates authenticated guest cursor movement without host input."""
+
+    SESSION_SECRET = "test-session-secret"
+
+    def setUp(self):
+        self.input_ctrl = Mock()
+        self.input_ctrl.get_cursor_pos.return_value = (0, 0)
+        self.input_ctrl_patch = patch.object(guest_daemon, "input_ctrl", self.input_ctrl)
+        self.auth_secret_patch = patch.object(guest_daemon, "AUTH_SECRET", self.SESSION_SECRET)
+        self.input_ctrl_patch.start()
+        self.auth_secret_patch.start()
+        self.client = TestClient(guest_daemon.app)
+
+    def tearDown(self):
+        self.auth_secret_patch.stop()
+        self.input_ctrl_patch.stop()
+
+    def test_authenticated_move_forwards_bounded_arguments(self):
+        payload = {"x": 640, "y": 480, "duration_ms": 350, "steps": 7}
+
+        response = self.client.post(
+            "/input/mouse/move",
+            json=payload,
+            headers={"X-Session-Secret": self.SESSION_SECRET},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success", "action": "mouse_move", "params": payload})
+        self.input_ctrl.mouse_move.assert_called_once_with(**payload)
+
+    def test_rejects_out_of_bounds_move_arguments(self):
+        invalid_payloads = (
+            {"x": -1, "y": 480, "duration_ms": 100, "steps": 10},
+            {"x": 1920, "y": 480, "duration_ms": 100, "steps": 10},
+            {"x": 640, "y": -1, "duration_ms": 100, "steps": 10},
+            {"x": 640, "y": 1080, "duration_ms": 100, "steps": 10},
+            {"x": 640, "y": 480, "duration_ms": 9, "steps": 10},
+            {"x": 640, "y": 480, "duration_ms": 5001, "steps": 10},
+            {"x": 640, "y": 480, "duration_ms": 100, "steps": 1},
+            {"x": 640, "y": 480, "duration_ms": 100, "steps": 101},
+        )
+
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    "/input/mouse/move",
+                    json=payload,
+                    headers={"X-Session-Secret": self.SESSION_SECRET},
+                )
+                self.assertEqual(response.status_code, 422)
+
+        self.input_ctrl.mouse_move.assert_not_called()
+
+    def test_requires_valid_session_secret(self):
+        payload = {"x": 640, "y": 480}
+
+        for headers in ({}, {"X-Session-Secret": "wrong-secret"}):
+            with self.subTest(headers=headers):
+                response = self.client.post("/input/mouse/move", json=payload, headers=headers)
+                self.assertEqual(response.status_code, 401)
+
+        self.input_ctrl.mouse_move.assert_not_called()
+
+    def test_health_liveness_stays_unauthenticated(self):
+        response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ready")
+
+
+class TestMouseMoveHostDispatch(unittest.TestCase):
+    """Validates host-to-guest mouse move routing without network access."""
+
+    def test_vm_mouse_move_targets_guest_route(self):
+        payload = {"x": 640, "y": 480, "duration_ms": 350, "steps": 7}
+        expected = {"status": "success"}
+
+        with patch.object(mcp_server.client, "request", return_value=expected) as request:
+            result = handle_tool_call("vm_mouse_move", payload)
+
+        self.assertEqual(result, expected)
+        request.assert_called_once_with("/input/mouse/move", method="POST", payload=payload)
 
 
 @unittest.skipUnless(

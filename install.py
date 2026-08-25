@@ -87,12 +87,14 @@ def deploy_managed_skill() -> bool:
 def run_tests() -> bool:
     """Runs automated verification tests."""
     print("\nRunning Verification & Self-Test Suite...")
+    security_script = os.path.join(ROOT_DIR, "tests", "test_security_boundaries.py")
     test_script = os.path.join(ROOT_DIR, "tests", "test_blender_user_story.py")
     iso_script = os.path.join(ROOT_DIR, "tests", "verify_isolation.py")
 
+    res0 = subprocess.run([sys.executable, security_script])
     res1 = subprocess.run([sys.executable, test_script])
     res2 = subprocess.run([sys.executable, iso_script])
-    return res1.returncode == 0 and res2.returncode == 0
+    return res0.returncode == 0 and res1.returncode == 0 and res2.returncode == 0
 
 
 def main():

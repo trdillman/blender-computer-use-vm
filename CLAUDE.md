@@ -34,7 +34,7 @@ python scripts/build_msi.py
 .\scripts\manage_golden_snapshot.ps1 -VMName "Blender-CU-VM" -SnapshotName "golden_base" -Action "Create"
 ```
 
-Note: capture/input tests in `test_blender_user_story.py` exercise Win32 SendInput/DXGI directly, so they move the cursor of whatever desktop they run on — run them inside the guest VM, not on the host. `verify_isolation.py` and the MCP registry/licensing tests are safe to run on the host.
+Note: Before running `test_blender_user_story.py`, see the `BLENDER_CU_ALLOW_HOST_INPUT` safety guidance in Repo conventions below.
 
 ## Architecture
 
@@ -65,8 +65,10 @@ Three tiers, strictly one-directional:
   (`COMPUTERNAME -eq "BLENDER-CU-VM"`) or `BLENDER_CU_ALLOW_HOST=1` is set.
 - `install.py` refuses to touch `~/.claude.json` on parse failure and always
   writes a timestamped `.backup-*` copy before modifying it.
-- Input-injection tests (`TestInputController`) skip unless
-  `BLENDER_CU_ALLOW_HOST_INPUT=1`; run them inside the guest, never on the host.
+- Direct Win32 input test classes skip by default and require
+  `BLENDER_CU_ALLOW_HOST_INPUT=1`, which must only be enabled inside the guest.
+  Default mocked route/isolation tests do not inject input; capture/video tests may
+  observe the desktop and write temporary artifacts.
 - `staging/` holds multi-GB untracked payloads (Blender 5.2, NVIDIA GPU-PV drivers) — gitignored; never stage them. Test artifacts go to `C:\Temp` (also gitignored).
 - The skill `blender-computer-use-vm/SKILL.md` exists in **three mirror copies** — `skills/` (canonical, used by `.claude-plugin/plugin.json`), `.claude/skills/`, and `.skills/` (for OMP) — so different loaders pick it up zero-config. Update all three together.
 - Version strings live in `package.json`, `marketplace.json`, and `.claude-plugin/plugin.json` — bump all three together.

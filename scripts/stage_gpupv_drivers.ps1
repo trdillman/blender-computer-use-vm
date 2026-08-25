@@ -99,6 +99,13 @@ foreach ($dll in $System32NvidiaDlls) {
 # 3. Create Guest-Side Installer Script in Staging
 $GuestInstallerBat = @"
 @echo off
+if /I not "%COMPUTERNAME%"=="BLENDER-CU-VM" (
+    if not "%BLENDER_CU_ALLOW_HOST%"=="1" (
+        echo SAFETY ABORT: This installer must run on BLENDER-CU-VM. Set BLENDER_CU_ALLOW_HOST=1 to override.
+        exit /b 1
+    )
+)
+
 echo [GPU-PV Guest Setup] Installing NVIDIA GPU-PV Drivers...
 
 :: 1. Create HostDriverStore directories

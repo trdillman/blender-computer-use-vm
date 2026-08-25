@@ -62,6 +62,13 @@ class MouseClickRequest(BaseModel):
     modifiers: Optional[List[str]] = Field(None, description="Modifier keys to hold: ['ctrl', 'shift', 'alt']")
 
 
+class MouseMoveRequest(BaseModel):
+    x: int = Field(..., ge=0, le=1919)
+    y: int = Field(..., ge=0, le=1079)
+    duration_ms: int = Field(100, ge=10, le=5000)
+    steps: int = Field(10, ge=2, le=100)
+
+
 class MouseDragRequest(BaseModel):
     start_x: int
     start_y: int
@@ -157,6 +164,14 @@ def api_mouse_click(req: MouseClickRequest) -> Dict[str, Any]:
             modifiers=req.modifiers,
         )
     return {"status": "success", "action": "mouse_click", "params": req.model_dump()}
+
+
+@app.post("/input/mouse/move", dependencies=[Depends(verify_auth_token)])
+def api_mouse_move(req: MouseMoveRequest) -> Dict[str, Any]:
+    """Moves the cursor within the fixed 1920x1080 guest bounds."""
+    with _INPUT_LOCK:
+        input_ctrl.mouse_move(x=req.x, y=req.y, duration_ms=req.duration_ms, steps=req.steps)
+    return {"status": "success", "action": "mouse_move", "params": req.model_dump()}
 
 
 @app.post("/input/mouse/drag", dependencies=[Depends(verify_auth_token)])

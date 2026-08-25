@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "python host/mcp_server.py",
-    "test": "python tests/test_blender_user_story.py && python tests/verify_isolation.py",
+    "test": "python tests/test_security_boundaries.py && python tests/test_blender_user_story.py && python tests/verify_isolation.py",
     "package": "python scripts/package_release.py"
   },
   "keywords": [

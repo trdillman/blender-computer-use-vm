@@ -21,6 +21,7 @@ class VMController:
     # VM names are interpolated into PowerShell command strings; restrict to
     # safe identifier characters so no shell metacharacters can sneak in.
     _VM_NAME_RE = re.compile(r"^[A-Za-z0-9_.\- ]{1,64}$")
+    _SNAPSHOT_NAME_RE = re.compile(r"\A[A-Za-z0-9_.-]{1,64}\Z")
 
     def __init__(self, vm_name: str = "Blender-CU-VM", guest_url: str = "http://192.168.122.100:8000"):
         if not self._VM_NAME_RE.match(vm_name or ""):
@@ -73,6 +74,11 @@ class VMController:
         """
         Instantly reverts VM to named snapshot and ensures it is running.
         """
+        if not self._SNAPSHOT_NAME_RE.match(snapshot_name or ""):
+            raise ValueError(
+                "Invalid snapshot name (allowed: ASCII letters, digits, _, -, ., max 64): "
+                f"{snapshot_name!r}"
+            )
         start_time = time.time()
         cmd = (
             f"Restore-VMSnapshot -VMName '{self.vm_name}' -Name '{snapshot_name}' -Confirm:$false; "

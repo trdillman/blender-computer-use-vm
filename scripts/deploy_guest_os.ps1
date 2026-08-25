@@ -44,6 +44,14 @@ function Test-AdminPrivileges {
     return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Write-DaemonSecretAccessInstructions {
+    param([Parameter(Mandatory = $true)][string]$SecretPath)
+
+    $EscapedSecretPath = $SecretPath.Replace("'", "''")
+    Write-Host "  Daemon secret file (ACL-restricted): $SecretPath" -ForegroundColor DarkGray
+    Write-Host "  Read at runtime: `$env:GUEST_DAEMON_SECRET = (Get-Content -LiteralPath '$EscapedSecretPath' -Raw).Trim()" -ForegroundColor Cyan
+}
+
 Write-Host "=== Blender-CU-VM Unattended Guest OS Deployment ===" -ForegroundColor Cyan
 
 # --- 1. Prerequisites --------------------------------------------------------
@@ -70,7 +78,9 @@ if (-not $NoDaemonSecret) { $DaemonSecret = [Guid]::NewGuid().ToString("N") }
 $BuildArgs = @{ VMName = $VMName }
 if ($DaemonSecret) { $BuildArgs.DaemonSecret = $DaemonSecret }
 & (Join-Path $ScriptDir "build_bootstrap_media.ps1") @BuildArgs
-$BootstrapISO = "C:\VMs\Blender-CU-VM\Bootstrap\unattend.iso"
+$BootstrapOutputDir = "C:\VMs\Blender-CU-VM\Bootstrap"
+$BootstrapISO = Join-Path $BootstrapOutputDir "unattend.iso"
+$DaemonSecretFile = Join-Path $BootstrapOutputDir "guest_daemon_secret.txt"
 if (-not (Test-Path $BootstrapISO)) { throw "Bootstrap ISO missing after build: $BootstrapISO" }
 
 # --- 4. Attach DVD drives -----------------------------------------------------
@@ -105,9 +115,7 @@ if ($SkipHealthWait) {
     Write-Host "`n=== Deployment launched (-SkipHealthWait). Poll manually with: ===" -ForegroundColor Cyan
     Write-Host "    python .\scripts\check_guest_health.py" -ForegroundColor Cyan
     if ($DaemonSecret) {
-        Write-Host "`n  ! Daemon auth is ENABLED for this deployment. Host MCP callers need:" -ForegroundColor Yellow
-        Write-Host "      setx GUEST_DAEMON_SECRET `"$DaemonSecret`"" -ForegroundColor Cyan
-        Write-Host "    (plain-text copy also at C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt)" -ForegroundColor DarkGray
+        Write-DaemonSecretAccessInstructions -SecretPath $DaemonSecretFile
     }
     return
 }
@@ -124,9 +132,7 @@ while ((Get-Date) -lt $Deadline) {
     if ($LASTEXITCODE -eq 0) {
         Write-Host "`n  + Guest daemon is HEALTHY after $Attempt poll(s)." -ForegroundColor Green
         if ($DaemonSecret) {
-            Write-Host "`n  ! Daemon auth is ENABLED for this deployment. Host MCP callers need:" -ForegroundColor Yellow
-            Write-Host "      setx GUEST_DAEMON_SECRET `"$DaemonSecret`"" -ForegroundColor Cyan
-            Write-Host "    (plain-text copy also at C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt)" -ForegroundColor DarkGray
+            Write-DaemonSecretAccessInstructions -SecretPath $DaemonSecretFile
         }
         Write-Host "`n=== Deployment complete. Next: create the golden snapshot ===" -ForegroundColor Green
         Write-Host "    .\scripts\manage_golden_snapshot.ps1 -VMName $VMName -SnapshotName golden_base -Action Create" -ForegroundColor Cyan

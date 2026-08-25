@@ -70,13 +70,71 @@ Write-Host "  + Injected guest\setup_virtual_display.ps1" -ForegroundColor DarkG
 
 # Optional daemon auth secret: travels beside install_guest.ps1 on the ISO and
 # a host-side copy is kept next to the ISO for MCP callers (env var still wins).
+$SecretAcl = $null
 if ($DaemonSecret) {
     if ($DaemonSecret -notmatch '^[A-Za-z0-9_.\-]{16,128}$') {
         throw "DaemonSecret failed charset validation (allowed: alphanumeric, '_', '-', '.'; 16-128 chars)."
     }
-    Set-Content -Path (Join-Path $GuestDest "daemon_secret.txt") -Value $DaemonSecret -Encoding ASCII
-    Set-Content -Path (Join-Path $OutputDir "guest_daemon_secret.txt") -Value $DaemonSecret -Encoding ASCII
-    Write-Host "  + Injected guest\daemon_secret.txt (host copy: $(Join-Path $OutputDir 'guest_daemon_secret.txt'))" -ForegroundColor DarkGray
+    $HostSecretPath = Join-Path $OutputDir "guest_daemon_secret.txt"
+
+    # Create the host copy with its final ACL already attached. Applying the ACL
+    # after writing would briefly expose the secret through the parent ACL and
+    # could leave it exposed if the hardening step failed.
+    $SecretAcl = [System.Security.AccessControl.FileSecurity]::new()
+    $SecretAcl.SetAccessRuleProtection($true, $false)
+    $SecretSids = @(
+        [System.Security.Principal.WindowsIdentity]::GetCurrent().User,
+        [System.Security.Principal.SecurityIdentifier]::new("S-1-5-18"),
+        [System.Security.Principal.SecurityIdentifier]::new("S-1-5-32-544")
+    )
+    foreach ($SecretSid in $SecretSids) {
+        $SecretRule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+            $SecretSid,
+            [System.Security.AccessControl.FileSystemRights]::FullControl,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+        [void]$SecretAcl.AddAccessRule($SecretRule)
+    }
+
+    $SecretPaths = @(
+        (Join-Path $GuestDest "daemon_secret.txt"),
+        $HostSecretPath
+    )
+    foreach ($SecretPath in $SecretPaths) {
+        if (Test-Path -LiteralPath $SecretPath) {
+            Remove-Item -LiteralPath $SecretPath -Force
+        }
+        $SecretStream = $null
+        $SecretCreated = $false
+        try {
+            $SecretStream = [System.IO.FileStream]::new(
+                $SecretPath,
+                [System.IO.FileMode]::CreateNew,
+                [System.Security.AccessControl.FileSystemRights]::Write,
+                [System.IO.FileShare]::None,
+                4096,
+                [System.IO.FileOptions]::None,
+                $SecretAcl
+            )
+            $SecretCreated = $true
+            try {
+                $SecretBytes = [System.Text.Encoding]::ASCII.GetBytes($DaemonSecret + [Environment]::NewLine)
+                $SecretStream.Write($SecretBytes, 0, $SecretBytes.Length)
+                $SecretStream.Flush($true)
+            } finally {
+                $SecretStream.Dispose()
+                $SecretStream = $null
+            }
+        } catch {
+            if ($SecretStream) { $SecretStream.Dispose() }
+            if ($SecretCreated) {
+                Remove-Item -LiteralPath $SecretPath -Force -ErrorAction SilentlyContinue
+            }
+            throw
+        }
+    }
+
+    Write-Host "  + Injected guest\daemon_secret.txt (host copy: $HostSecretPath)" -ForegroundColor DarkGray
 }
 
 # --- 2. Root bootstrap.cmd (self-locating launcher) -------------------------
@@ -106,6 +164,7 @@ if (Test-Path $ISOPath) { Remove-Item -Path $ISOPath -Force }
 if (-not ([System.Management.Automation.PSTypeName]'BlenderCuVm.IsoWriter').Type) {
     Add-Type -TypeDefinition @"
 using System;
+using System.Security.AccessControl;
 using System.Runtime.InteropServices;
 
 namespace BlenderCuVm {
@@ -117,9 +176,19 @@ namespace BlenderCuVm {
     }
 
     public static class IsoWriter {
-        public static void WriteIStreamToFile(object comStream, string path) {
+        public static void WriteIStreamToFile(object comStream, string path, FileSecurity security) {
             var stream = (IStreamInterop)comStream;
-            using (var file = new System.IO.FileStream(path, System.IO.FileMode.Create, System.IO.FileAccess.Write)) {
+            System.IO.FileStream file = security == null
+                ? new System.IO.FileStream(path, System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.None)
+                : new System.IO.FileStream(
+                    path,
+                    System.IO.FileMode.CreateNew,
+                    FileSystemRights.Write,
+                    System.IO.FileShare.None,
+                    2 * 1024 * 1024,
+                    System.IO.FileOptions.None,
+                    security);
+            using (file) {
                 var buffer = new byte[2 * 1024 * 1024];
                 var readPtr = Marshal.AllocHGlobal(4);
                 try {
@@ -144,7 +213,7 @@ $fsi.VolumeName = "BCUVMBTSTRP"
 $fsi.FileSystemsToCreate = 3   # ISO9660 + Joliet (long filenames for .ps1/.py)
 $fsi.Root.AddTree($StagingFolder, $false)
 $result = $fsi.CreateResultImage()
-[BlenderCuVm.IsoWriter]::WriteIStreamToFile($result.ImageStream, $ISOPath)
+[BlenderCuVm.IsoWriter]::WriteIStreamToFile($result.ImageStream, $ISOPath, $SecretAcl)
 [System.Runtime.InteropServices.Marshal]::ReleaseComObject($result) | Out-Null
 [System.Runtime.InteropServices.Marshal]::ReleaseComObject($fsi) | Out-Null
 
