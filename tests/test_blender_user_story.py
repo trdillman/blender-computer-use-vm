@@ -173,6 +173,11 @@ class TestMCPServer(unittest.TestCase):
         self.assertIsInstance(res, dict)
 
 
+@unittest.skipUnless(
+    os.environ.get("BLENDER_CU_ALLOW_HOST_INPUT") == "1",
+    "Injects real Win32 input — runs only inside the guest VM, or on the host "
+    "with BLENDER_CU_ALLOW_HOST_INPUT=1 (will move your physical cursor).",
+)
 class TestFullUserStoryScenario(unittest.TestCase):
     """Simulates a complete autonomous Blender user story test run."""
 
