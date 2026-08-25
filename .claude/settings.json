@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "blender-cu-vm": {
+      "command": "python",
+      "args": [
+        "C:\\tmp\\blender-cu-vm\\host\\mcp_server.py"
+      ],
+      "env": {
+        "BLENDER_VM_NAME": "Blender-CU-VM",
+        "BLENDER_GUEST_URL": "http://192.168.122.100:8000"
+      }
+    }
+  },
+  "enableAllProjectMcpServers": true,
+  "skills": [
+    "./skills/blender-computer-use-vm"
+  ]
+}
