@@ -16,7 +16,7 @@ import os
 import socket
 import threading
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
@@ -102,6 +102,9 @@ class BlenderEvalRequest(BaseModel):
 
 
 # --- Endpoints ---
+# NOTE: every route except /health requires the X-Session-Secret header when
+# GUEST_DAEMON_SECRET is set (empty secret = auth disabled, e.g. dev default).
+# /health stays open as a read-only liveness probe for pollers.
 @app.get("/health")
 def health_check() -> Dict[str, Any]:
     """Returns guest daemon status, display metrics, and engine health."""
@@ -117,7 +120,7 @@ def health_check() -> Dict[str, Any]:
     }
 
 
-@app.get("/screen/capture")
+@app.get("/screen/capture", dependencies=[Depends(verify_auth_token)])
 def capture_screen(
     region: Optional[str] = Query(None, description="ROI crop 'x,y,w,h'"),
     format: str = Query("png", description="png, jpeg, webp"),
@@ -143,7 +146,7 @@ def capture_screen(
     return Response(content=img_bytes, media_type=mime)
 
 
-@app.post("/input/mouse/click")
+@app.post("/input/mouse/click", dependencies=[Depends(verify_auth_token)])
 def api_mouse_click(req: MouseClickRequest) -> Dict[str, Any]:
     with _INPUT_LOCK:
         input_ctrl.mouse_click(
@@ -156,7 +159,7 @@ def api_mouse_click(req: MouseClickRequest) -> Dict[str, Any]:
     return {"status": "success", "action": "mouse_click", "params": req.model_dump()}
 
 
-@app.post("/input/mouse/drag")
+@app.post("/input/mouse/drag", dependencies=[Depends(verify_auth_token)])
 def api_mouse_drag(req: MouseDragRequest) -> Dict[str, Any]:
     with _INPUT_LOCK:
         input_ctrl.mouse_drag(
@@ -172,34 +175,34 @@ def api_mouse_drag(req: MouseDragRequest) -> Dict[str, Any]:
     return {"status": "success", "action": "mouse_drag", "params": req.model_dump()}
 
 
-@app.post("/input/mouse/scroll")
+@app.post("/input/mouse/scroll", dependencies=[Depends(verify_auth_token)])
 def api_mouse_scroll(req: MouseScrollRequest) -> Dict[str, Any]:
     with _INPUT_LOCK:
         input_ctrl.mouse_scroll(x=req.x, y=req.y, delta_y=req.delta_y, delta_x=req.delta_x)
     return {"status": "success", "action": "mouse_scroll", "params": req.model_dump()}
 
 
-@app.post("/input/keyboard/type")
+@app.post("/input/keyboard/type", dependencies=[Depends(verify_auth_token)])
 def api_type_text(req: TypeTextRequest) -> Dict[str, Any]:
     with _INPUT_LOCK:
         input_ctrl.type_text(text=req.text, cpm=req.cpm)
     return {"status": "success", "action": "type_text", "length": len(req.text)}
 
 
-@app.post("/input/keyboard/press")
+@app.post("/input/keyboard/press", dependencies=[Depends(verify_auth_token)])
 def api_key_press(req: KeyPressRequest) -> Dict[str, Any]:
     with _INPUT_LOCK:
         input_ctrl.key_press(keys=req.keys, hold_ms=req.hold_ms)
     return {"status": "success", "action": "key_press", "keys": req.keys}
 
 
-@app.get("/ui/windows")
+@app.get("/ui/windows", dependencies=[Depends(verify_auth_token)])
 def api_list_windows(filter_visible: bool = True) -> Dict[str, Any]:
     windows = ui_inspector.list_windows(filter_visible=filter_visible)
     return {"status": "success", "count": len(windows), "windows": windows}
 
 
-@app.get("/ui/find")
+@app.get("/ui/find", dependencies=[Depends(verify_auth_token)])
 def api_find_ui_element(query: str, hwnd: Optional[int] = None) -> JSONResponse:
     elem = ui_inspector.find_element(query=query, parent_hwnd=hwnd)
     if elem:
@@ -207,13 +210,13 @@ def api_find_ui_element(query: str, hwnd: Optional[int] = None) -> JSONResponse:
     return JSONResponse({"status": "not_found", "query": query}, status_code=404)
 
 
-@app.post("/ui/focus")
+@app.post("/ui/focus", dependencies=[Depends(verify_auth_token)])
 def api_focus_window(hwnd: int) -> Dict[str, Any]:
     success = ui_inspector.focus_window(hwnd)
     return {"status": "success" if success else "failed", "hwnd": hwnd}
 
 
-@app.post("/video/record")
+@app.post("/video/record", dependencies=[Depends(verify_auth_token)])
 def api_video_record(req: VideoRecordRequest) -> Dict[str, Any]:
     action = req.action.lower()
     if action == "start":
@@ -228,7 +231,7 @@ def api_video_record(req: VideoRecordRequest) -> Dict[str, Any]:
         return video_rec.get_status()
 
 
-@app.post("/blender/eval")
+@app.post("/blender/eval", dependencies=[Depends(verify_auth_token)])
 def api_blender_eval(req: BlenderEvalRequest) -> Dict[str, Any]:
     """
     Proxy endpoint forwarding evaluation directly to in-process Blender TCP telemetry bridge.

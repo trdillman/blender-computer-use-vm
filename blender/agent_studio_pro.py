@@ -76,7 +76,9 @@ if bpy:
                 self.report({'INFO'}, "GhostCanvas: User-Story recording started.")
             else:
                 duration = round(time.time() - _RECORD_START_TIME, 2)
-                out_file = "C:\\Temp\\recorded_user_story.json"
+                # Env-overridable so hosts can redirect the non-project write
+                # (default kept for guest-tier compatibility).
+                out_file = os.environ.get("BLENDER_CU_RECORD_OUT", "C:\\Temp\\recorded_user_story.json")
                 try:
                     os.makedirs(os.path.dirname(out_file), exist_ok=True)
                     with open(out_file, "w", encoding="utf-8") as f:

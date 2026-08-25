@@ -9,6 +9,7 @@ Proves that:
 from __future__ import annotations
 
 import ast
+import glob
 import os
 import sys
 
@@ -21,27 +22,34 @@ import mcp_server  # type: ignore
 def verify_architectural_isolation() -> bool:
     print("\n=== Verifying Host/Guest Architectural Input Isolation ===")
 
-    # 1. Inspect mcp_server module source AST
-    mcp_file = os.path.join(ROOT_DIR, "host", "mcp_server.py")
-    with open(mcp_file, "r", encoding="utf-8") as f:
-        source = f.read()
-
-    tree = ast.parse(source)
-
     forbidden_symbols = ["SetCursorPos", "mouse_event", "keybd_event", "SendInput"]
-    found_forbidden = []
+    all_host_files = sorted(glob.glob(os.path.join(ROOT_DIR, "host", "*.py")))
+    failures: list[str] = []
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and node.id in forbidden_symbols:
-            found_forbidden.append(node.id)
-        elif isinstance(node, ast.Attribute) and node.attr in forbidden_symbols:
-            found_forbidden.append(node.attr)
+    # 1. Inspect EVERY host-tier module source AST (not just the MCP entrypoint)
+    for host_file in all_host_files:
+        with open(host_file, "r", encoding="utf-8") as f:
+            source = f.read()
 
-    if found_forbidden:
-        print(f" [FAIL] Forbidden Win32 input symbols found in Host MCP Server: {found_forbidden}")
+        tree = ast.parse(source)
+        found_forbidden = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in forbidden_symbols:
+                found_forbidden.append(node.id)
+            elif isinstance(node, ast.Attribute) and node.attr in forbidden_symbols:
+                found_forbidden.append(node.attr)
+
+        rel = os.path.relpath(host_file, ROOT_DIR)
+        if found_forbidden:
+            print(f" [FAIL] {rel}: forbidden Win32 input symbols {found_forbidden}")
+            failures.append(rel)
+        else:
+            print(f" [PASS] {rel}: zero host-level Win32 input calls")
+
+    if failures:
+        print(f" [FAIL] Forbidden Win32 input symbols found in host tier: {failures}")
         return False
-    else:
-        print(" [PASS] Checked Host MCP Server AST: ZERO host-level Win32 input calls.")
+    print(f" [PASS] Scanned {len(all_host_files)} host-tier modules: ZERO host-level Win32 input calls.")
 
     # 2. Verify tool dispatch encapsulation
     sample_drag = mcp_server.handle_tool_call("vm_mouse_drag", {

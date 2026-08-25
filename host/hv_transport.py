@@ -7,6 +7,7 @@ with automatic HTTP/TCP networking fallback.
 from __future__ import annotations
 
 import json
+import os
 import socket
 from typing import Any, Dict, Optional, Tuple
 import urllib.error
@@ -64,6 +65,9 @@ class HyperVSocketClient:
             url = f"{url}?{query_str}"
 
         headers = {"Content-Type": "application/json"}
+        secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+        if secret:
+            headers["X-Session-Secret"] = secret
         data_bytes = None
         if payload is not None:
             data_bytes = json.dumps(payload).encode("utf-8")
@@ -100,7 +104,11 @@ class HyperVSocketClient:
             query_str = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
             url = f"{url}?{query_str}"
 
-        req = urllib.request.Request(url, method="GET")
+        get_headers = {}
+        secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+        if secret:
+            get_headers["X-Session-Secret"] = secret
+        req = urllib.request.Request(url, method="GET", headers=get_headers)
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = resp.read()

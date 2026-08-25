@@ -7,6 +7,7 @@ instant snapshot restoration, and guest daemon readiness checks.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import time
 from typing import Any, Dict
@@ -17,7 +18,13 @@ import urllib.request
 class VMController:
     """Controls Hyper-V VM lifecycle and snapshot operations."""
 
+    # VM names are interpolated into PowerShell command strings; restrict to
+    # safe identifier characters so no shell metacharacters can sneak in.
+    _VM_NAME_RE = re.compile(r"^[A-Za-z0-9_.\- ]{1,64}$")
+
     def __init__(self, vm_name: str = "Blender-CU-VM", guest_url: str = "http://192.168.122.100:8000"):
+        if not self._VM_NAME_RE.match(vm_name or ""):
+            raise ValueError(f"Invalid VM name (allowed: letters, digits, _ . - space, max 64): {vm_name!r}")
         self.vm_name = vm_name
         self.guest_url = guest_url.rstrip("/")
 

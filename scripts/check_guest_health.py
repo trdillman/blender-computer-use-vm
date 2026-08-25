@@ -11,13 +11,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.request
 from typing import Any, Dict
 
 
+def _auth_headers(extra: Dict[str, str]) -> Dict[str, str]:
+    """Adds the daemon session secret when GUEST_DAEMON_SECRET is set."""
+    secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+    if secret:
+        extra["X-Session-Secret"] = secret
+    return extra
+
+
 def query_endpoint(url: str, timeout: float = 5.0) -> Dict[str, Any]:
-    req = urllib.request.Request(url, headers={"User-Agent": "GhostCanvas-HealthCheck/1.1"})
+    req = urllib.request.Request(url, headers=_auth_headers({"User-Agent": "GhostCanvas-HealthCheck/1.1"}))
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -53,7 +62,7 @@ def check_live_guest_health(guest_url: str = "http://192.168.122.100:8000") -> b
     print(f" [3/3] Querying In-Process Blender Bridge ({eval_url})...")
     try:
         payload = json.dumps({"expression": "bpy.app.version_string"}).encode("utf-8")
-        req = urllib.request.Request(eval_url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+        req = urllib.request.Request(eval_url, data=payload, headers=_auth_headers({"Content-Type": "application/json"}), method="POST")
         with urllib.request.urlopen(req, timeout=5.0) as resp:
             eval_data = json.loads(resp.read().decode("utf-8"))
             print(f"  + Blender Version: {eval_data.get('result')}")
