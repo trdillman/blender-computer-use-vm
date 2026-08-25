@@ -50,6 +50,8 @@ The isolated environment connects over the `blender-cu-vm` Model Context Protoco
 | `vm_blender_eval` | Evaluates Python expr in Blender | `expression` (e.g. `bpy.context.active_object.name`) |
 | `vm_session_reset` | Instantly rolls VM back to golden snapshot | `snapshot_name` (default: "golden_base") |
 | `vm_health_check` | Checks VM & daemon health | (no parameters) |
+| `vm_license_status` | Checks active license tier and entitlements | (no parameters) |
+| `vm_activate_license` | Activates commercial key | `license_key` |
 
 ---
 

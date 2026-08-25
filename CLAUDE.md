@@ -1,0 +1,58 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+An isolated, GPU-partitioned Windows 11 Hyper-V VM controlled over MCP, so AI agents can do Blender UI testing / Computer-Use without touching the host desktop. The commercial layer (v1.1+, licensing, tray app, MSI, storefront) is branded **GhostCanvas 3D** — that name in `host/licensing.py`, `host/tray_app.py`, `blender/agent_studio_pro.py`, and `scripts/build_msi.py` refers to this same product.
+
+## Commands
+
+```powershell
+# Run test suites (unittest-based, each file has a __main__ entry)
+python tests/test_blender_user_story.py    # E2E: capture, input, UIA, NVENC, telemetry, MCP dispatch
+python tests/test_commercial_suite.py      # licensing crypto, HWID node-lock, tray, MSI builder
+python tests/verify_isolation.py           # static proof that host layer never injects input
+
+# Single test (unittest.main accepts names as argv)
+python tests/test_blender_user_story.py TestScreenCapture.test_grid_annotation
+
+# MCP server (stdio JSON-RPC; what agents connect to)
+python host/mcp_server.py
+
+# Installer: registers MCP into ~/.claude.json + ~/.omp config, deploys skill, runs tests
+python install.py --all          # or granular: --register-mcp --deploy-skill --verify
+.\install.ps1                    # master host installer (prereqs, VM provisioning, registration)
+
+# Packaging
+python scripts/package_release.py
+python scripts/build_msi.py
+
+# VM lifecycle (admin PowerShell; see README §4 for full provisioning flow)
+.\scripts\setup_vm_gpupv.ps1 -VMName "Blender-CU-VM" -MemoryBytes 8GB -ProcessorCount 8
+.\scripts\stage_gpupv_drivers.ps1 -VMName "Blender-CU-VM" -Mode "Stage"
+.\scripts\manage_golden_snapshot.ps1 -VMName "Blender-CU-VM" -SnapshotName "golden_base" -Action "Create"
+```
+
+Note: capture/input tests in `test_blender_user_story.py` exercise Win32 SendInput/DXGI directly, so they move the cursor of whatever desktop they run on — run them inside the guest VM, not on the host. `verify_isolation.py` and the MCP registry/licensing tests are safe to run on the host.
+
+## Architecture
+
+Three tiers, strictly one-directional:
+
+1. **Host tier** — `host/mcp_server.py`: stdio JSON-RPC server exposing 16 `vm_*` tools (input, screenshot, UIA, `vm_blender_eval`, `vm_session_reset`, `vm_license_status`, `vm_activate_license`). Routes calls through `hv_transport.py` (AF_HYPERV HV-SOCK, auto-fallback to HTTP at `BLENDER_GUEST_URL`). `vm_controller.py` drives Hyper-V via PowerShell WMI; `vm_session_reset` restores the `golden_base` snapshot for sub-2s clean-slate rollback. `asset_sync.py` stages .blend/addon files into the guest and pulls renders/dumps back.
+
+2. **Guest tier** — `guest/guest_daemon.py`: FastAPI daemon on `0.0.0.0:8000` (`GUEST_DAEMON_PORT`), token-authenticated via `GUEST_DAEMON_SECRET`. All actual Win32 work happens here: `input_controller.py` (SendInput, Bézier drags), `screen_capture.py` (DXGI duplication + grid overlays), `ui_automation.py` (ctypes UIA tree), `video_recorder.py` (NVENC MP4).
+
+3. **Blender tier** — `blender/cu_telemetry_bridge.py`: runs inside Blender's embedded Python; TCP server on port 9199 (`BLENDER_BRIDGE_PORT`). All `bpy` access is marshaled to Blender's main thread via `bpy.app.timers` — never touch bpy from the listener thread. `vm_blender_eval` flows: MCP → guest daemon → this bridge. `state_inspector.py` does declarative scene-invariant checks, `crash_interceptor.py` tees C-level stdout/stderr.
+
+**Critical invariant:** the host tier must never import or call Win32 input/capture APIs — every computer-use action is a network payload to the guest. `tests/verify_isolation.py` enforces this; keep it passing when refactoring `host/`.
+
+### Repo conventions
+
+- **Windows-only codebase** (Win32 ctypes, Hyper-V, PowerShell). Primary shell is PowerShell.
+- `staging/` holds multi-GB untracked payloads (Blender 5.2, NVIDIA GPU-PV drivers) — gitignored; never stage them. Test artifacts go to `C:\Temp` (also gitignored).
+- The skill `blender-computer-use-vm/SKILL.md` exists in **three mirror copies** — `skills/` (canonical, used by `.claude-plugin/plugin.json`), `.claude/skills/`, and `.skills/` (for OMP) — so different loaders pick it up zero-config. Update all three together.
+- Version strings live in `package.json`, `marketplace.json`, and `.claude-plugin/plugin.json` — bump all three together.
+- MCP registration config is duplicated in `.mcp.json` and `mcp-config.json` (`BLENDER_VM_NAME`, `BLENDER_GUEST_URL` env).
+- When driving the live VM, prefer the `blender-computer-use-vm` skill (project skill) for the tool reference and the standard user-story execution protocol.

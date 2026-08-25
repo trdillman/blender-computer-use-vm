@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 bl_info = {
     "name": "GhostCanvas 3D: Agent Studio Pro",
     "author": "GhostCanvas",
-    "version": (1, 1, 0),
+    "version": (1, 1, 1),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > GhostCanvas Tab",
     "description": "Companion HUD, telemetry, and assertion recorder for AI Computer-Use.",
