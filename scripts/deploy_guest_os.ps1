@@ -31,7 +31,8 @@ param(
     [string]$VMName = "Blender-CU-VM",
     [int]$HealthWaitMinutes = 90,
     [int]$PollIntervalSeconds = 30,
-    [switch]$SkipHealthWait
+    [switch]$SkipHealthWait,
+    [switch]$NoDaemonSecret
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +63,13 @@ if (-not $VM) {
 
 # --- 3. Build bootstrap ISO ---------------------------------------------------
 Write-Host "`n[3/6] Building unattended bootstrap ISO..." -ForegroundColor Cyan
-& (Join-Path $ScriptDir "build_bootstrap_media.ps1") -VMName $VMName
+# Generate a per-deployment daemon auth secret so the guest daemon never ships
+# with auth disabled. -NoDaemonSecret restores the legacy dev-mode behavior.
+$DaemonSecret = ""
+if (-not $NoDaemonSecret) { $DaemonSecret = [Guid]::NewGuid().ToString("N") }
+$BuildArgs = @{ VMName = $VMName }
+if ($DaemonSecret) { $BuildArgs.DaemonSecret = $DaemonSecret }
+& (Join-Path $ScriptDir "build_bootstrap_media.ps1") @BuildArgs
 $BootstrapISO = "C:\VMs\Blender-CU-VM\Bootstrap\unattend.iso"
 if (-not (Test-Path $BootstrapISO)) { throw "Bootstrap ISO missing after build: $BootstrapISO" }
 
@@ -97,6 +104,11 @@ Write-Host "  + Watch graphically:  vmconnect.exe localhost $VMName" -Foreground
 if ($SkipHealthWait) {
     Write-Host "`n=== Deployment launched (-SkipHealthWait). Poll manually with: ===" -ForegroundColor Cyan
     Write-Host "    python .\scripts\check_guest_health.py" -ForegroundColor Cyan
+    if ($DaemonSecret) {
+        Write-Host "`n  ! Daemon auth is ENABLED for this deployment. Host MCP callers need:" -ForegroundColor Yellow
+        Write-Host "      setx GUEST_DAEMON_SECRET `"$DaemonSecret`"" -ForegroundColor Cyan
+        Write-Host "    (plain-text copy also at C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt)" -ForegroundColor DarkGray
+    }
     return
 }
 
@@ -111,6 +123,11 @@ while ((Get-Date) -lt $Deadline) {
     $Result = & python $HealthScript --url "http://192.168.122.100:8000" 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "`n  + Guest daemon is HEALTHY after $Attempt poll(s)." -ForegroundColor Green
+        if ($DaemonSecret) {
+            Write-Host "`n  ! Daemon auth is ENABLED for this deployment. Host MCP callers need:" -ForegroundColor Yellow
+            Write-Host "      setx GUEST_DAEMON_SECRET `"$DaemonSecret`"" -ForegroundColor Cyan
+            Write-Host "    (plain-text copy also at C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt)" -ForegroundColor DarkGray
+        }
         Write-Host "`n=== Deployment complete. Next: create the golden snapshot ===" -ForegroundColor Green
         Write-Host "    .\scripts\manage_golden_snapshot.ps1 -VMName $VMName -SnapshotName golden_base -Action Create" -ForegroundColor Cyan
         return

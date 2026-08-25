@@ -21,6 +21,26 @@ AF_HYPERV = 34
 # Standard HV-SOCK GUID for Blender CU Daemon
 GUEST_SERVICE_GUID = "30b0b8c2-48e0-496e-a342-6e274a2b9199"
 
+# Host-side copy of the generated guest daemon secret (written by
+# build_bootstrap_media.ps1 / deploy_guest_os.ps1). The GUEST_DAEMON_SECRET
+# environment variable always takes precedence over this file.
+DAEMON_SECRET_FILE = r"C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt"
+
+
+def _load_session_secret() -> str:
+    """Resolves the daemon session secret: env var first, then fallback file."""
+    secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+    if secret:
+        return secret
+    try:
+        with open(DAEMON_SECRET_FILE, "r", encoding="ascii") as fh:
+            secret = fh.read().strip()
+        if secret:
+            return secret
+    except OSError:
+        pass
+    return ""
+
 
 class HyperVSocketClient:
     """Manages low-latency communication with the Guest VM Daemon."""
@@ -65,7 +85,7 @@ class HyperVSocketClient:
             url = f"{url}?{query_str}"
 
         headers = {"Content-Type": "application/json"}
-        secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+        secret = _load_session_secret()
         if secret:
             headers["X-Session-Secret"] = secret
         data_bytes = None
@@ -105,7 +125,7 @@ class HyperVSocketClient:
             url = f"{url}?{query_str}"
 
         get_headers = {}
-        secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+        secret = _load_session_secret()
         if secret:
             get_headers["X-Session-Secret"] = secret
         req = urllib.request.Request(url, method="GET", headers=get_headers)

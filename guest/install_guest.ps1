@@ -29,7 +29,8 @@ param(
     [string]$GuestIP = "192.168.122.100",
     [string]$GatewayIP = "192.168.122.1",
     [string]$DnsServer = "1.1.1.1",
-    [string]$TargetRoot = "C:\BlenderCU"
+    [string]$TargetRoot = "C:\BlenderCU",
+    [string]$DaemonSecret = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,7 +59,8 @@ if ($ScriptDir -ne $TargetGuestDir) {
     $localInstaller = Join-Path $TargetGuestDir "install_guest.ps1"
     & powershell -NoProfile -ExecutionPolicy Bypass -File $localInstaller `
         -BlenderPath $BlenderPath -DaemonPort $DaemonPort -GuestIP $GuestIP `
-        -GatewayIP $GatewayIP -DnsServer $DnsServer -TargetRoot $TargetRoot
+        -GatewayIP $GatewayIP -DnsServer $DnsServer -TargetRoot $TargetRoot `
+        -DaemonSecret $DaemonSecret
     exit $LASTEXITCODE
 }
 $ScriptDir = $TargetGuestDir
@@ -107,6 +109,31 @@ if (Test-Path $VddScript) {
 
 # --- Step 4: Register hidden daemon startup + launch ------------------------
 Write-Step "Registering guest agent daemon startup task..." 4
+
+# Resolve the daemon auth secret BEFORE launching anything. Precedence:
+#   explicit -DaemonSecret param > daemon_secret.txt staged beside this script
+#   (bootstrap ISO payload) > already-persisted Machine env (rerun-safe)
+#   > freshly generated GUID. Empty secret means auth disabled (dev mode).
+$SecretFile = Join-Path $ScriptDir "daemon_secret.txt"
+if (-not $DaemonSecret -and (Test-Path $SecretFile)) {
+    $DaemonSecret = (Get-Content -Path $SecretFile -Raw).Trim()
+}
+if (-not $DaemonSecret) {
+    $DaemonSecret = [Environment]::GetEnvironmentVariable("GUEST_DAEMON_SECRET", "Machine")
+}
+if ($DaemonSecret -and $DaemonSecret -notmatch '^[A-Za-z0-9_.\-]{16,128}$') {
+    Write-Warning "Daemon secret failed charset validation; generating a fresh one."
+    $DaemonSecret = ""
+}
+if (-not $DaemonSecret) {
+    $DaemonSecret = [Guid]::NewGuid().ToString("N")
+}
+# Persist Machine-wide so the Startup shortcut's hidden daemon inherits it on
+# every logon; also export into THIS session for the immediate launch below.
+[Environment]::SetEnvironmentVariable("GUEST_DAEMON_SECRET", $DaemonSecret, "Machine")
+$env:GUEST_DAEMON_SECRET = $DaemonSecret
+Write-Host "  + Daemon auth ENABLED (GUEST_DAEMON_SECRET persisted Machine-wide)." -ForegroundColor Green
+
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Warning "python.exe not on PATH in guest. Install Python 3.10+ (ticked 'Add to PATH') before the daemon can run."
 }

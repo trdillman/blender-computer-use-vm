@@ -18,8 +18,14 @@ from typing import Any, Dict
 
 
 def _auth_headers(extra: Dict[str, str]) -> Dict[str, str]:
-    """Adds the daemon session secret when GUEST_DAEMON_SECRET is set."""
+    """Adds the daemon session secret (env var, or deploy-generated file)."""
     secret = os.environ.get("GUEST_DAEMON_SECRET", "").strip()
+    if not secret:
+        try:
+            with open(r"C:\VMs\Blender-CU-VM\Bootstrap\guest_daemon_secret.txt", "r", encoding="ascii") as fh:
+                secret = fh.read().strip()
+        except OSError:
+            pass
     if secret:
         extra["X-Session-Secret"] = secret
     return extra

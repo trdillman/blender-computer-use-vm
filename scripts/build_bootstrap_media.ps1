@@ -20,7 +20,8 @@
 param(
     [string]$VMName = "Blender-CU-VM",
     [string]$OutputDir = "C:\VMs\Blender-CU-VM\Bootstrap",
-    [string]$ISOPath = ""
+    [string]$ISOPath = "",
+    [string]$DaemonSecret = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -66,6 +67,17 @@ foreach ($name in $GuestScripts) {
 # it beside itself on the DVD.
 Copy-Item -Path (Join-Path $ScriptDir "setup_virtual_display.ps1") -Destination $GuestDest -Force
 Write-Host "  + Injected guest\setup_virtual_display.ps1" -ForegroundColor DarkGray
+
+# Optional daemon auth secret: travels beside install_guest.ps1 on the ISO and
+# a host-side copy is kept next to the ISO for MCP callers (env var still wins).
+if ($DaemonSecret) {
+    if ($DaemonSecret -notmatch '^[A-Za-z0-9_.\-]{16,128}$') {
+        throw "DaemonSecret failed charset validation (allowed: alphanumeric, '_', '-', '.'; 16-128 chars)."
+    }
+    Set-Content -Path (Join-Path $GuestDest "daemon_secret.txt") -Value $DaemonSecret -Encoding ASCII
+    Set-Content -Path (Join-Path $OutputDir "guest_daemon_secret.txt") -Value $DaemonSecret -Encoding ASCII
+    Write-Host "  + Injected guest\daemon_secret.txt (host copy: $(Join-Path $OutputDir 'guest_daemon_secret.txt'))" -ForegroundColor DarkGray
+}
 
 # --- 2. Root bootstrap.cmd (self-locating launcher) -------------------------
 $BootstrapCmd = Join-Path $StagingFolder "bootstrap.cmd"

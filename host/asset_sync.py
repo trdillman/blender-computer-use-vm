@@ -7,6 +7,7 @@ video recordings, and crash dumps between host and guest.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from typing import Any, Dict
 import zipfile
@@ -15,9 +16,24 @@ import zipfile
 class AssetSyncManager:
     """Manages file synchronization and test artifact staging."""
 
+    # Values interpolated into PowerShell command strings; restrict to safe
+    # identifier characters (mirrors vm_controller._VM_NAME_RE).
+    _VM_NAME_RE = re.compile(r"^[A-Za-z0-9_.\- ]{1,64}$")
+    _MODULE_NAME_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+
     def __init__(self, vm_name: str = "Blender-CU-VM", guest_url: str = "http://192.168.122.100:8000"):
+        if not self._VM_NAME_RE.match(vm_name or ""):
+            raise ValueError(
+                f"Invalid VM name: {vm_name!r} "
+                "(allowed: alphanumeric, '_', '-', '.', space; max 64 chars)"
+            )
         self.vm_name = vm_name
         self.guest_url = guest_url.rstrip("/")
+
+    @staticmethod
+    def _ps_escape(value: str) -> str:
+        """Escapes a value for safe embedding in a PS single-quoted string."""
+        return value.replace("'", "''")
 
     def push_file_hyperv(self, host_path: str, guest_path: str) -> Dict[str, Any]:
         """
@@ -29,8 +45,8 @@ class AssetSyncManager:
         abs_host = os.path.abspath(host_path)
         ps_cmd = (
             f"Copy-VMFile -VMName '{self.vm_name}' "
-            f"-SourcePath '{abs_host}' "
-            f"-DestinationPath '{guest_path}' "
+            f"-SourcePath '{self._ps_escape(abs_host)}' "
+            f"-DestinationPath '{self._ps_escape(guest_path)}' "
             "-CreateFullPath -FileSource Host -Force"
         )
 
@@ -58,6 +74,8 @@ class AssetSyncManager:
         """
         if not os.path.isdir(addon_source_dir):
             return {"status": "error", "message": f"Addon source must be a directory: {addon_source_dir}"}
+        if not self._MODULE_NAME_RE.match(module_name or ""):
+            return {"status": "error", "message": f"Invalid module name: {module_name!r} (allowed: alphanumeric, '_', '-', '.')"}
 
         # Create temporary zip archive
         temp_zip = os.path.abspath(f"C:\\Temp\\{module_name}_staged.zip")
